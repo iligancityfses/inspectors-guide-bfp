@@ -1,4 +1,6 @@
-// NFPA references for specific fire safety requirements
+import { Reference } from '@/types/references';
+
+// Keep the original nfpaReferences object for backward compatibility
 export const nfpaReferences = {
   // Alternate Power Supply Requirements
   alternatePowerSupply: {
@@ -122,5 +124,131 @@ export const additionalNfpaStandards = [
     code: 'NFPA 110',
     title: 'Standard for Emergency and Standby Power Systems',
     relevance: 'Covers performance requirements for emergency and standby power systems providing an alternate source of electrical power.'
+  }
+];
+
+// Formatted NFPA references for the Reference Library component
+export const nfpaReferenceLibrary: Reference[] = [
+  {
+    id: 'nfpa-1',
+    title: 'NFPA 1: Fire Code',
+    description: 'Comprehensive fire code that provides requirements to establish a reasonable level of fire safety and property protection from hazards created by fire and explosion.',
+    type: 'nfpa',
+    category: 'General Fire Safety',
+    content: `
+      <h3>NFPA 1: Fire Code</h3>
+      <p>The NFPA 1 Fire Code provides requirements to establish a reasonable level of fire safety and property protection from the hazards created by fire, explosion, and dangerous conditions.</p>
+      
+      <h4>Key Provisions:</h4>
+      <ul>
+        <li>Chapter 1: Administration</li>
+        <li>Chapter 4: General Requirements</li>
+        <li>Chapter 10: General Safety Requirements</li>
+        <li>Chapter 12: Features of Fire Protection</li>
+        <li>Chapter 13: Fire Protection Systems</li>
+        <li>Chapter 14: Means of Egress</li>
+        <li>Chapter 16: Safeguarding Construction, Alteration, and Demolition Operations</li>
+        <li>Chapter 20: Occupancy Fire Safety</li>
+      </ul>
+    `,
+    tags: ['fire code', 'general requirements', 'fire protection', 'means of egress'],
+    datePublished: '2021-01-01'
+  },
+  {
+    id: 'nfpa-13',
+    title: 'NFPA 13: Standard for the Installation of Sprinkler Systems',
+    description: 'Provides the minimum requirements for the design and installation of automatic fire sprinkler systems and exposure protection sprinkler systems.',
+    type: 'nfpa',
+    category: 'Sprinkler Systems',
+    content: `
+      <h3>NFPA 13: Standard for the Installation of Sprinkler Systems</h3>
+      <p>This standard provides the minimum requirements for the design and installation of automatic fire sprinkler systems and exposure protection sprinkler systems.</p>
+      
+      <h4>Key Provisions:</h4>
+      <ul>
+        <li>Chapter 4: General Requirements</li>
+        <li>Chapter 8: System Types and Requirements</li>
+        <li>Chapter 9: Sprinkler Location Requirements</li>
+        <li>Chapter 11: Design Approaches</li>
+        <li>Chapter 12: General Requirements for Storage</li>
+        <li>Chapter 14: Installation Requirements</li>
+        <li>Chapter 16: System Acceptance</li>
+        <li>Chapter 27: Systems Acceptance Testing</li>
+      </ul>
+    `,
+    tags: ['sprinkler systems', 'fire protection', 'water-based systems'],
+    datePublished: '2022-01-01'
+  },
+  {
+    id: 'nfpa-14',
+    title: 'NFPA 14: Standard for the Installation of Standpipe and Hose Systems',
+    description: 'Provides requirements for the installation of standpipe and hose systems for buildings and structures.',
+    type: 'nfpa',
+    category: 'Standpipe Systems',
+    content: `
+      <h3>NFPA 14: Standard for the Installation of Standpipe and Hose Systems</h3>
+      <p>This standard provides requirements for the installation of standpipe and hose systems for buildings and structures.</p>
+      
+      <h4>Key Provisions:</h4>
+      <ul>
+        <li>Chapter 4: System Components and Hardware</li>
+        <li>Chapter 5: System Types</li>
+        <li>Chapter 6: Installation Requirements</li>
+        <li>Chapter 7: Design</li>
+        <li>Chapter 8: Plans and Calculations</li>
+        <li>Chapter 11: System Acceptance</li>
+      </ul>
+    `,
+    tags: ['standpipe', 'hose systems', 'fire protection', 'water-based systems'],
+    datePublished: '2019-01-01'
+  },
+  {
+    id: 'nfpa-72',
+    title: 'NFPA 72: National Fire Alarm and Signaling Code',
+    description: 'Covers the application, installation, location, performance, inspection, testing, and maintenance of fire alarm systems, supervising station alarm systems, public emergency alarm reporting systems, fire warning equipment, emergency communications systems, and their components.',
+    type: 'nfpa',
+    category: 'Fire Alarm Systems',
+    content: `
+      <h3>NFPA 72: National Fire Alarm and Signaling Code</h3>
+      <p>This code covers the application, installation, location, performance, inspection, testing, and maintenance of fire alarm systems, supervising station alarm systems, public emergency alarm reporting systems, fire warning equipment, emergency communications systems, and their components.</p>
+      
+      <h4>Key Provisions:</h4>
+      <ul>
+        <li>Chapter 10: Fundamentals</li>
+        <li>Chapter 12: Circuits and Pathways</li>
+        <li>Chapter 14: Inspection, Testing, and Maintenance</li>
+        <li>Chapter 17: Initiating Devices</li>
+        <li>Chapter 18: Notification Appliances</li>
+        <li>Chapter 21: Emergency Control Function Interfaces</li>
+        <li>Chapter 23: Protected Premises Fire Alarm Systems</li>
+        <li>Chapter 24: Emergency Communications Systems</li>
+        <li>Chapter 26: Supervising Station Alarm Systems</li>
+      </ul>
+    `,
+    tags: ['fire alarm', 'detection', 'notification', 'emergency communications'],
+    datePublished: '2022-01-01'
+  },
+  {
+    id: 'nfpa-101',
+    title: 'NFPA 101: Life Safety Code',
+    description: 'The Life Safety Code is the most widely used source for strategies to protect people based on building construction, protection, and occupancy features that minimize the effects of fire and related hazards.',
+    type: 'nfpa',
+    category: 'Life Safety',
+    content: `
+      <h3>NFPA 101: Life Safety Code</h3>
+      <p>The Life Safety Code is the most widely used source for strategies to protect people based on building construction, protection, and occupancy features that minimize the effects of fire and related hazards.</p>
+      
+      <h4>Key Provisions:</h4>
+      <ul>
+        <li>Chapter 7: Means of Egress</li>
+        <li>Chapter 8: Features of Fire Protection</li>
+        <li>Chapter 9: Building Service and Fire Protection Equipment</li>
+        <li>Chapter 10: Interior Finish, Contents, and Furnishings</li>
+        <li>Chapter 11: Special Structures and High-Rise Buildings</li>
+        <li>Chapters 12-42: Occupancy Chapters</li>
+      </ul>
+    `,
+    tags: ['life safety', 'means of egress', 'occupancy requirements'],
+    datePublished: '2021-01-01'
   }
 ];

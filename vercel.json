@@ -12,6 +12,12 @@
       ]
     }
   ],
+  "routes": [
+    { "src": "/admin", "dest": "/admin" },
+    { "src": "/disclaimer", "dest": "/disclaimer" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "status": 404, "dest": "/not-found" }
+  ],
   "github": {
     "silent": true
   }

@@ -50,6 +50,18 @@ export const defaultBuildingFeatures: BuildingFeature[] = [
     selected: false
   },
   {
+    id: 'natural-ventilation',
+    name: 'Natural Ventilation',
+    description: 'Building has adequate natural ventilation (affects sprinkler requirements for parking garages)',
+    selected: false
+  },
+  {
+    id: 'crop-growing-only',
+    name: 'Crop Growing Only',
+    description: 'Agricultural building used exclusively for growing crops (affects sprinkler requirements)',
+    selected: false
+  },
+  {
     id: 'parking-garage',
     name: 'Parking Garage',
     description: 'Building includes an enclosed parking garage',

@@ -4,11 +4,31 @@ A web application to help fire safety inspectors of the Bureau of Fire Protectio
 
 ## Features
 
+### Building Assessment
 - Select building occupancy type
 - Input number of stories/floors
 - Input dimensions for each floor
 - Calculate occupant load automatically
 - Generate fire safety requirements based on building data
+- View specialized requirements for specific occupancy types
+
+### Inspector Tools
+- **Fire Safety Calculators**:
+  - Fire Flow Calculator - Determine required water supply based on building size and construction
+  - Egress Capacity Calculator - Verify if exits provide sufficient capacity for occupant load
+  - Fire Load Density Calculator - Calculate hazard classification based on combustible materials
+
+### Reference Library
+- Searchable collection of fire safety references
+- Includes sections from the Revised Fire Code of the Philippines
+- NFPA standards relevant to Philippine fire safety
+- BFP memorandums and circulars
+- Bookmark important references for quick access
+
+### Feedback System
+- Submit suggestions and feedback in various categories
+- Report issues with requirements or request new features
+- Admin panel to view and manage feedback
 
 ## Tech Stack
 

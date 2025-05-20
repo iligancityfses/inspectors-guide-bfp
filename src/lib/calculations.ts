@@ -72,6 +72,43 @@ export function determineRequiredFireSafetyMeasures(buildingData: BuildingData):
       requirement.applicableOccupancies.includes('all') || 
       requirement.applicableOccupancies.includes(occupancyType.id);
 
+    // Special cases for sprinkler system exemptions based on the Revised Fire Code of the Philippines
+    if (requirement.id === 'automatic-sprinkler-system') {
+      // Single-story business establishments under 2,000 sq.m with occupant load < 500 are exempt
+      if (occupancyType.id === 'business' && 
+          numberOfStories === 1 && 
+          totalArea < 2000 && 
+          totalOccupantLoad < 500) {
+        return false;
+      }
+      
+      // Single-family dwellings and residential occupancies with 2 or fewer stories are exempt
+      if ((occupancyType.id === 'residential-single-family' || 
+           occupancyType.id === 'residential-two-family') && 
+          numberOfStories <= 2) {
+        return false;
+      }
+      
+      // Open parking garages with natural ventilation are exempt
+      if (occupancyType.id === 'storage-parking-garage' && 
+          buildingData.features?.some(feature => feature.id === 'natural-ventilation' && feature.selected)) {
+        return false;
+      }
+      
+      // Telecommunication facilities under 2,000 sq.m with fewer than 3 stories are exempt
+      if (occupancyType.id === 'telecommunication-facility' && 
+          numberOfStories < 3 && 
+          totalArea < 2000) {
+        return false;
+      }
+      
+      // Agricultural buildings used exclusively for growing crops are exempt
+      if (occupancyType.id === 'agricultural-facility' && 
+          buildingData.features?.some(feature => feature.id === 'crop-growing-only' && feature.selected)) {
+        return false;
+      }
+    }
+
     // Check if the requirement has thresholds and if they are met
     const meetsOccupantLoadThreshold = 
       requirement.thresholds.occupantLoad === undefined || 

@@ -28,8 +28,14 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
   {
     id: 'automatic-sprinkler-system',
     name: 'Automatic Sprinkler System',
-    description: 'An automatic sprinkler system shall be installed in buildings with a height of more than 15 meters (50 feet) or with an occupant load of more than 500 persons, or buildings with a total floor area exceeding 2,000 square meters.',
-    applicableOccupancies: ['all'],
+    description: 'An automatic sprinkler system shall be installed in buildings with a height of more than 15 meters (50 feet) or with an occupant load of more than 500 persons, or buildings with a total floor area exceeding 2,000 square meters. Single-story business establishments under 2,000 square meters with occupant load less than 500 are exempt.',
+    applicableOccupancies: [
+      'assembly', 'educational', 'healthcare-hospitals', 'healthcare-outpatient', 'healthcare-nursing-homes', 
+      'institutional-restrained', 'institutional-general', 'mercantile', 'industrial-general', 'industrial-special',
+      'industrial-high-hazard', 'storage-low-hazard', 'storage-moderate-hazard', 'storage-high-hazard',
+      'mixed-use', 'residential-hotel', 'residential-apartment', 'residential-dormitories',
+      'business-data-centers', 'laboratory', 'waste-management-facility', 'power-generation-plant'
+    ],
     thresholds: {
       occupantLoad: 500,
       stories: 5, // Assuming average floor height of 3m, so 15m ÷ 3m = 5 floors
