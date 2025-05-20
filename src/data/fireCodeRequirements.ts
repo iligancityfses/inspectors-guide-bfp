@@ -1,3 +1,5 @@
+import { Floor } from '@/lib/calculations';
+
 export interface FireSafetyRequirement {
   id: string;
   name: string;
@@ -11,9 +13,9 @@ export interface FireSafetyRequirement {
   };
   reference: string;
   specificRequirements?: {
-    quantity?: string | ((params: { occupantLoad: number, floorArea: number, stories: number }) => string);
+    quantity?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, floors?: Floor[] }) => string);
     type?: string;
-    specifications?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, buildingHeight: number }) => string);
+    specifications?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, buildingHeight: number, floors?: Floor[] }) => string);
     distribution?: string;
     installation?: string;
     maintenance?: string;
@@ -26,12 +28,13 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
   {
     id: 'automatic-sprinkler-system',
     name: 'Automatic Sprinkler System',
-    description: 'An automatic sprinkler system shall be installed in buildings with a height of more than 15 meters (50 feet) or with an occupant load of more than 500 persons.',
+    description: 'An automatic sprinkler system shall be installed in buildings with a height of more than 15 meters (50 feet) or with an occupant load of more than 500 persons, or buildings with a total floor area exceeding 2,000 square meters.',
     applicableOccupancies: ['all'],
     thresholds: {
       occupantLoad: 500,
       stories: 5, // Assuming average floor height of 3m, so 15m ÷ 3m = 5 floors
-      buildingHeight: 15
+      buildingHeight: 15,
+      floorArea: 2000
     },
     reference: 'RA 9514 IRR Rule 10.2.6.4',
     specificRequirements: {
@@ -87,16 +90,84 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
     thresholds: {},
     reference: 'RA 9514 IRR Rule 10.2.6.7',
     specificRequirements: {
-      quantity: ({ floorArea }) => {
-        // Basic calculation: 1 extinguisher per 278 sq meters (3,000 sq ft) or fraction thereof
-        const baseCount = Math.ceil(floorArea / 278);
-        return `Minimum ${baseCount} fire extinguisher(s) required for the building`;
+      quantity: ({ floorArea, floors, occupantLoad }) => {
+        // Get the number of floors
+        const floorCount = floors ? floors.length : 1;
+        
+        if (!floors || floors.length === 0) {
+          // If no floor data, use the total floor area
+          const extinguishersRequired = Math.max(1, Math.ceil(floorArea / 278));
+          
+          // Additional extinguishers for high occupant load
+          let additionalExtinguishers = 0;
+          if (occupantLoad > 200) {
+            additionalExtinguishers = Math.floor(occupantLoad / 200);
+          }
+          
+          const total = extinguishersRequired + additionalExtinguishers;
+          return `Minimum ${total} fire extinguisher(s) required for the building.`;
+        }
+        
+        // Calculate extinguishers needed for each individual floor
+        let totalExtinguishers = 0;
+        
+        // Calculate the requirements for each floor individually
+        const floorRequirements = floors.map(floor => {
+          // Basic calculation: 1 extinguisher per 278 sq meters (3,000 sq ft) or fraction thereof
+          const baseExtinguishers = Math.max(1, Math.ceil(floor.area / 278));
+          
+          // Additional extinguishers for high occupant load
+          let additionalExtinguishers = 0;
+          if (floor.occupantLoad > 200) {
+            additionalExtinguishers = Math.floor(floor.occupantLoad / 200);
+          }
+          
+          const floorTotal = baseExtinguishers + additionalExtinguishers;
+          totalExtinguishers += floorTotal;
+          
+          return floorTotal;
+        });
+        
+        // Find the most common requirement for display purposes
+        const counts = {};
+        floorRequirements.forEach(count => {
+          counts[count] = (counts[count] || 0) + 1;
+        });
+        
+        // Find the most frequent requirement
+        let mostCommonRequirement = floorRequirements[0];
+        let highestCount = 1;
+        
+        Object.keys(counts).forEach(count => {
+          if (counts[count] > highestCount) {
+            mostCommonRequirement = parseInt(count);
+            highestCount = counts[count];
+          }
+        });
+        
+        // If all floors have different requirements, show a range
+        const minReq = Math.min(...floorRequirements);
+        const maxReq = Math.max(...floorRequirements);
+        
+        let perFloorText = '';
+        if (minReq === maxReq) {
+          // All floors have the same requirement
+          perFloorText = `${minReq} fire extinguisher(s) required per floor`;
+        } else if (highestCount >= floorCount / 2) {
+          // Most floors have the same requirement
+          perFloorText = `${mostCommonRequirement} fire extinguisher(s) required for most floors (varies by floor area and occupant load)`;
+        } else {
+          // Requirements vary significantly
+          perFloorText = `${minReq}-${maxReq} fire extinguisher(s) required per floor (varies by floor area and occupant load)`;
+        }
+        
+        return `${perFloorText}. Total of ${totalExtinguishers} fire extinguisher(s) required for the entire building.`;
       },
-      type: 'Type ABC (multi-purpose dry chemical) for general areas; Type K for kitchens; Type BC for electrical equipment areas',
-      specifications: 'Minimum rating of 2-A:10-B:C for light hazard occupancies; 4-A:40-B:C for ordinary hazard; 6-A:80-B:C for high hazard',
-      distribution: 'Maximum travel distance of 23 meters (75 feet) to a fire extinguisher',
-      installation: 'Top of extinguisher not more than 1.5 meters (5 feet) above the floor; bottom not less than 10 cm (4 inches) above the floor',
-      maintenance: 'Monthly visual inspection; annual maintenance; hydrostatic testing every 5-12 years depending on type'
+      type: 'Type ABC (multi-purpose dry chemical) for general areas; Type K for kitchens; Type BC for electrical equipment areas. For computer rooms and sensitive electronic equipment areas, clean agent extinguishers are recommended.',
+      specifications: 'Minimum rating of 2-A:10-B:C for light hazard occupancies; 4-A:40-B:C for ordinary hazard; 6-A:80-B:C for high hazard. Each extinguisher must have a valid inspection tag and be fully charged.',
+      distribution: 'Maximum travel distance of 23 meters (75 feet) to a fire extinguisher. Extinguishers must be placed along normal paths of travel and near exits. Additional extinguishers are required for specific hazards such as kitchens, mechanical rooms, and storage areas.',
+      installation: 'Top of extinguisher not more than 1.5 meters (5 feet) above the floor; bottom not less than 10 cm (4 inches) above the floor. Extinguishers weighing more than 18 kg (40 lbs) must be installed so that the top is not more than 1.07 meters (3.5 feet) above the floor.',
+      maintenance: 'Monthly visual inspection; annual maintenance by certified technician; hydrostatic testing every 5-12 years depending on type; immediate replacement of damaged or discharged extinguishers.'
     }
   },
   {
@@ -109,51 +180,40 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
     },
     reference: 'RA 9514 IRR Rule 10.2.6.5',
     specificRequirements: {
-      specifications: ({ occupantLoad, stories }) => {
+      quantity: ({ occupantLoad, stories, floors }) => {
+        const floorCount = floors ? floors.length : stories || 1;
+        let alarmsPerFloor = 2; // Minimum 2 alarm devices per floor
+        let manualStationsPerFloor = 1; // Minimum 1 manual pull station per floor
+        
+        // Calculate based on occupant load per floor
+        const avgOccupantLoadPerFloor = Math.ceil(occupantLoad / floorCount);
+        
+        if (avgOccupantLoadPerFloor > 100) {
+          // For larger floors, add more alarm devices
+          alarmsPerFloor = Math.ceil(avgOccupantLoadPerFloor / 100) + 1;
+          // For larger floors, add more manual stations
+          manualStationsPerFloor = Math.max(2, Math.ceil(avgOccupantLoadPerFloor / 200));
+        }
+        
+        return `Minimum ${alarmsPerFloor} alarm notification devices required per floor. Minimum ${manualStationsPerFloor} manual pull station(s) required per floor. Total of ${alarmsPerFloor * floorCount} alarm devices and ${manualStationsPerFloor * floorCount} manual pull stations required for the building.`;
+      },
+      specifications: ({ occupantLoad, stories, floors }) => {
+        const floorCount = floors ? floors.length : stories || 1;
         let systemType = "Conventional fire alarm system";
-        if (occupantLoad > 300 || stories > 3) {
+        if (occupantLoad > 300 || floorCount > 3) {
           systemType = "Addressable fire alarm system";
         }
-        return `${systemType} with manual pull stations, smoke detectors, heat detectors, and audio-visual alarm devices`;
-      },
-      distribution: 'Manual pull stations at each exit and at each exit stairway on each floor. Maximum travel distance to a manual pull station shall not exceed 60 meters (200 feet)',
-      installation: 'Control panel shall be located at the main entrance or in a constantly attended location. Smoke detectors in corridors spaced not more than 9 meters (30 feet) apart',
-      maintenance: 'Monthly testing of manual pull stations; Quarterly testing of alarm notification devices; Annual testing of all components'
-    }
-  },
-  {
-    id: 'automatic-sprinkler-system',
-    name: 'Automatic Sprinkler System',
-    description: 'An automatic sprinkler system shall be installed in buildings with a height of more than 15 meters or with an occupant load of more than 500 persons.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 500,
-      stories: 5, // Assuming average floor height of 3m, so 15m ÷ 3m = 5 floors
-      buildingHeight: 15
-    },
-    reference: 'RA 9514 IRR Rule 10.2.6.4',
-    specificRequirements: {
-      specifications: ({ buildingHeight, stories, occupantLoad }) => {
-        let pumpPSI = 0;
-        // Calculate required pump pressure based on building height
-        // Basic formula: 0.433 PSI per foot of height + base pressure
-        const baseHeadPressure = 65; // PSI
-        const psiPerMeter = 1.42; // 0.433 PSI per foot = ~1.42 PSI per meter
-        const actualHeight = buildingHeight || stories * 3;
         
-        pumpPSI = Math.ceil(baseHeadPressure + actualHeight * psiPerMeter);
-        
-        let sprinklerType = "Quick response";
-        if (occupantLoad > 1000) {
-          sprinklerType = "Standard response";
+        let additionalRequirements = "";
+        if (floorCount > 5 || occupantLoad > 1000) {
+          additionalRequirements = " System must include voice evacuation capabilities and emergency communication system.";
         }
         
-        return `Fire pump minimum pressure: ${pumpPSI} PSI. Water supply duration: minimum 30-60 minutes depending on hazard classification. Sprinkler heads: ${sprinklerType} type for light hazard; Standard response for ordinary and high hazard occupancies.`;
+        return `${systemType} with manual pull stations, smoke detectors, heat detectors, and audio-visual alarm devices.${additionalRequirements} Each floor requires separate zone identification on the main control panel.`;
       },
-      type: 'Wet pipe system with water under pressure at all times. Dry pipe systems allowed only in areas subject to freezing',
-      distribution: 'Light hazard: One sprinkler per 20.9 sq m (225 sq ft); Ordinary hazard: One sprinkler per 12.1 sq m (130 sq ft); High hazard: One sprinkler per 9.3 sq m (100 sq ft)',
-      installation: 'Sprinkler heads must be installed in accordance with NFPA 13 or equivalent standards. Maximum distance between sprinklers: 4.6 meters (15 feet) for light hazard; 4.0 meters (13 feet) for ordinary hazard; 3.7 meters (12 feet) for high hazard',
-      maintenance: 'Weekly visual inspection of control valves; Monthly inspection of water flow alarm devices; Quarterly inspection of alarm devices; Annual inspection and testing of all components; Five-year internal inspection of piping'
+      distribution: 'Manual pull stations at each exit and at each exit stairway on each floor. Maximum travel distance to a manual pull station shall not exceed 60 meters (200 feet). Alarm notification devices must be installed so that they are clearly audible and visible throughout all occupied areas with a sound level at least 15 dB above the average ambient sound level.',
+      installation: 'Control panel shall be located at the main entrance or in a constantly attended location. Smoke detectors in corridors spaced not more than 9 meters (30 feet) apart. Manual pull stations must be installed at a height of 1.1 to 1.37 meters (42 to 54 inches) above the floor.',
+      maintenance: 'Monthly testing of manual pull stations; Quarterly testing of alarm notification devices; Annual testing of all components; Complete system test and certification annually by a qualified technician.'
     }
   },
 
@@ -167,25 +227,43 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
     },
     reference: 'RA 9514 IRR Rule 10.2.5.2',
     specificRequirements: {
-      quantity: ({ occupantLoad }) => {
-        let requiredExits = 1;
-        if (occupantLoad > 50 && occupantLoad <= 500) {
-          requiredExits = 2;
-        } else if (occupantLoad > 500 && occupantLoad <= 1000) {
-          requiredExits = 3;
-        } else if (occupantLoad > 1000) {
-          requiredExits = 4;
+      quantity: ({ occupantLoad, floors }) => {
+        // Calculate required exits per floor based on occupant load per floor
+        const floorCount = floors ? floors.length : 1;
+        const avgOccupantLoadPerFloor = Math.ceil(occupantLoad / floorCount);
+        let requiredExitsPerFloor = 1;
+        
+        if (avgOccupantLoadPerFloor > 50 && avgOccupantLoadPerFloor <= 500) {
+          requiredExitsPerFloor = 2;
+        } else if (avgOccupantLoadPerFloor > 500 && avgOccupantLoadPerFloor <= 1000) {
+          requiredExitsPerFloor = 3;
+        } else if (avgOccupantLoadPerFloor > 1000) {
+          requiredExitsPerFloor = 4;
         }
-        return `Minimum ${requiredExits} exit(s) required`;
+        
+        // Calculate total exits for the building
+        let totalRequiredExits = 1;
+        if (occupantLoad > 50 && occupantLoad <= 500) {
+          totalRequiredExits = 2;
+        } else if (occupantLoad > 500 && occupantLoad <= 1000) {
+          totalRequiredExits = 3;
+        } else if (occupantLoad > 1000) {
+          totalRequiredExits = 4;
+        }
+        
+        return `Minimum ${requiredExitsPerFloor} exit(s) required per floor. Total of ${totalRequiredExits} exit(s) required for the building.`;
       },
-      specifications: ({ occupantLoad }) => {
+      specifications: ({ occupantLoad, floors }) => {
         // Calculate required exit width: 5 mm per person for stairs, 3.3 mm per person for level components
-        const stairWidth = Math.ceil(occupantLoad * 5) / 1000;
-        const doorWidth = Math.ceil(occupantLoad * 3.3) / 1000;
-        return `Minimum exit door width: ${Math.max(0.81, doorWidth).toFixed(2)} meters. Minimum stair width: ${Math.max(1.12, stairWidth).toFixed(2)} meters.`;
+        const floorCount = floors ? floors.length : 1;
+        const avgOccupantLoadPerFloor = Math.ceil(occupantLoad / floorCount);
+        const stairWidth = Math.ceil(avgOccupantLoadPerFloor * 5) / 1000;
+        const doorWidth = Math.ceil(avgOccupantLoadPerFloor * 3.3) / 1000;
+        
+        return `Minimum exit door width: ${Math.max(0.81, doorWidth).toFixed(2)} meters. Minimum stair width: ${Math.max(1.12, stairWidth).toFixed(2)} meters. Each floor requires separate exits with proper signage.`;
       },
-      installation: 'Exit doors shall swing in the direction of exit travel when serving an occupant load of 50 or more. Exit doors shall be equipped with panic hardware when serving an occupant load of 100 or more',
-      maintenance: 'Monthly inspection of exit doors, hardware, and signs; Annual testing of panic hardware'
+      installation: 'Exit doors shall swing in the direction of exit travel when serving an occupant load of 50 or more. Exit doors shall be equipped with panic hardware when serving an occupant load of 100 or more. Maximum travel distance to an exit shall not exceed 60 meters (200 feet) for unsprinklered buildings or 90 meters (300 feet) for sprinklered buildings.',
+      maintenance: 'Monthly inspection of exit doors, hardware, and signs; Annual testing of panic hardware; Quarterly inspection of exit pathways to ensure they remain unobstructed.'
     }
   },
   {
@@ -302,12 +380,19 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
   {
     id: 'fire-detection-system',
     name: 'Fire Detection System',
-    description: 'A fire detection system shall be installed in buildings with an occupant load of more than 100 persons.',
+    description: 'A fire detection system shall be installed in buildings with an occupant load of more than 100 persons to provide early warning of fire conditions.',
     applicableOccupancies: ['all'],
     thresholds: {
       occupantLoad: 100
     },
-    reference: 'RA 9514 IRR Rule 10, Division 5'
+    reference: 'RA 9514 IRR Rule 10, Division 5',
+    specificRequirements: {
+      specifications: 'System must include smoke detectors, heat detectors, and manual pull stations as appropriate for the occupancy. Detection devices must be connected to a control panel that initiates an alarm signal upon activation.',
+      type: 'Smoke detectors for early warning; Heat detectors for areas where smoke detectors may cause false alarms (kitchens, mechanical rooms); Manual pull stations at exits',
+      distribution: 'Smoke detectors must be installed in all corridors, common areas, and paths of egress. Maximum spacing between smoke detectors: 9 meters (30 feet). Heat detectors must be installed in kitchens, mechanical rooms, and other areas where smoke detectors are not suitable.',
+      installation: 'Detectors must be installed in accordance with NFPA 72 or equivalent standards. Control panel must be located in a constantly attended location or monitored remotely.',
+      maintenance: 'Monthly visual inspection; Quarterly testing of a sample of devices; Annual testing of all devices; Replacement of devices at end of service life (typically 10 years for smoke detectors)'
+    }
   },
   {
     id: 'fire-safety-officer',
@@ -632,6 +717,176 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
       distribution: 'Copies shall be provided to all building staff and posted at conspicuous locations on each floor',
       installation: 'Floor plans shall be oriented correctly with "YOU ARE HERE" markers',
       maintenance: 'Annual review and update; Immediate update following any changes to the building layout or fire protection systems'
+    }
+  },
+  {
+    id: 'alternate-exits-stairs-ladders',
+    name: 'Alternate Exits, Stairs, and Ladders',
+    description: 'Alternate means of egress including stairs, ladders, and emergency exits shall be provided in accordance with the occupant load and building height requirements.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      occupantLoad: 10,
+      stories: 2
+    },
+    reference: 'RA 9514 IRR Rule 10.2.5.3',
+    specificRequirements: {
+      quantity: ({ occupantLoad, stories }) => {
+        let requiredStairways = 1;
+        if (stories > 1) {
+          if (occupantLoad > 500 && occupantLoad <= 1000) {
+            requiredStairways = 2;
+          } else if (occupantLoad > 1000) {
+            requiredStairways = 3;
+          }
+        }
+        return `Minimum ${requiredStairways} stairway(s) required for multi-story buildings`;
+      },
+      specifications: ({ occupantLoad, stories }) => {
+        const stairWidth = Math.max(1.12, Math.ceil(occupantLoad * 5) / 1000).toFixed(2);
+        let requirements = `Minimum stair width: ${stairWidth} meters. `;
+        
+        if (stories > 4) {
+          requirements += 'For buildings over 4 stories: Stairways must be constructed of non-combustible materials with a minimum 2-hour fire resistance rating. ';
+        }
+        
+        if (occupantLoad > 100) {
+          requirements += 'Emergency stairways must be pressurized or enclosed to prevent smoke infiltration. ';
+        }
+        
+        requirements += 'Maximum riser height: 18 cm (7 inches). Minimum tread depth: 28 cm (11 inches). Minimum headroom: 2.1 meters (7 feet).';
+        
+        return requirements;
+      },
+      type: 'Interior exit stairways, exterior exit stairways, fire escape stairs, or ladders depending on building type and occupancy. Scissor stairs (two separate stairways within the same enclosure) are permitted if properly separated by fire-rated construction.',
+      installation: 'Stairways must discharge directly to the exterior or to a fire-rated exit passageway leading to the exterior. Stairways must be enclosed with fire-rated construction (minimum 1-hour for buildings up to 3 stories, 2-hour for buildings 4 stories or more). Stairways must have emergency lighting and exit signs.',
+      maintenance: 'Monthly inspection of stairways, handrails, and treads; Annual testing of emergency lighting and exit signs; Immediate repair of any damaged components'
+    }
+  },
+  {
+    id: 'alternate-power-supply-fdas',
+    name: 'Alternate Power Supply for Fire Detection and Alarm Systems',
+    description: 'An alternate power supply shall be provided for fire detection and alarm systems in buildings with an occupant load of more than 100 persons or buildings with more than 3 stories.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      occupantLoad: 100,
+      stories: 3
+    },
+    reference: 'RA 9514 IRR Rule 10.2.6.5 / NFPA 72',
+    specificRequirements: {
+      specifications: ({ stories, occupantLoad }) => {
+        let duration = 24;
+        let alarmDuration = 5;
+        
+        // For high-rise buildings or large occupant loads, increase requirements
+        if (stories > 7 || occupantLoad > 1000) {
+          duration = 24;
+          alarmDuration = 15; // For voice evacuation systems
+        }
+        
+        return `Secondary power supply must provide ${duration} hours of standby power followed by ${alarmDuration} minutes of alarm operation. For voice evacuation systems, ${duration} hours of standby followed by 15 minutes of alarm operation is required.`;
+      },
+      type: 'Storage batteries or automatic-starting engine-driven generator. Primary power supply must be a dedicated branch circuit.',
+      installation: 'Transfer to secondary power must be automatic and occur within 10 seconds of primary power failure. Battery systems must be installed in accordance with NFPA 72 Section 10.6.',
+      maintenance: 'Weekly visual inspection; Monthly testing under load; Annual full load test for minimum duration; Battery replacement every 3-5 years or as recommended by manufacturer.'
+    }
+  },
+  {
+    id: 'alternate-power-supply-sprinkler',
+    name: 'Alternate Power Supply for Sprinkler Systems',
+    description: 'An alternate power supply shall be provided for electric fire pumps serving sprinkler systems in buildings with more than 7 stories or with an occupant load of more than 500 persons.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      occupantLoad: 500,
+      stories: 7
+    },
+    reference: 'RA 9514 IRR Rule 10.2.6.4 / NFPA 20',
+    specificRequirements: {
+      specifications: ({ stories, occupantLoad }) => {
+        let powerRequirements = 'Electric fire pumps must have a reliable source of power with automatic transfer capability.';
+        
+        if (stories > 20 || occupantLoad > 2000) {
+          powerRequirements += ' Multiple power sources or on-site generator with minimum 8-hour fuel supply required.';
+        } else if (stories > 7 || occupantLoad > 500) {
+          powerRequirements += ' On-site generator with minimum 4-hour fuel supply or connection to multiple utility services required.';
+        }
+        
+        return powerRequirements;
+      },
+      type: 'Standby power system must be capable of carrying the locked-rotor current of the fire pump motor(s). Transfer of power must be automatic for high-rise buildings.',
+      installation: 'Power transfer switches must be listed for fire pump service. Generator installations must comply with NFPA 110 and be installed in a dedicated fire-rated room.',
+      maintenance: 'Weekly testing of transfer switches; Monthly testing of generator under load; Annual full load test for minimum 2 hours; Fuel supply maintenance according to NFPA 110.'
+    }
+  },
+  {
+    id: 'alternate-power-supply-elevators',
+    name: 'Alternate Power Supply for Elevators',
+    description: 'An alternate power supply shall be provided for elevators in buildings with more than 7 stories to ensure operation during emergency conditions.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      stories: 7
+    },
+    reference: 'RA 9514 IRR Rule 10 / NFPA 70/72/101',
+    specificRequirements: {
+      specifications: ({ stories }) => {
+        let capacity = 'Standby power must be capable of operating at least one elevator at a time.';
+        
+        if (stories > 20) {
+          capacity = 'Standby power must be capable of operating all designated elevators simultaneously.';
+        } else if (stories > 10) {
+          capacity = 'Standby power must be capable of operating at least two elevators simultaneously.';
+        }
+        
+        return `${capacity} Minimum 2-hour operation time for emergency power supply.`;
+      },
+      type: 'Standby power system must be an automatic-starting engine-driven generator or separate utility service.',
+      installation: 'Transfer to emergency power must be automatic and within 60 seconds. Dedicated feeders required for elevator circuits.',
+      maintenance: 'Monthly testing under load; Annual full load test for minimum 2 hours; Generator maintenance according to NFPA 110.'
+    }
+  },
+  {
+    id: 'fireman-switch-elevators',
+    name: 'Fireman Switch for Elevators',
+    description: 'A fireman switch shall be provided for all elevators in buildings with more than 3 stories to allow firefighter control during emergency operations.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      stories: 3
+    },
+    reference: 'RA 9514 IRR Rule 10 / NFPA 72',
+    specificRequirements: {
+      specifications: 'Phase I Emergency Recall Operation must be provided through a three-position key switch at designated level. Phase II Emergency In-Car Operation must allow firefighters to control elevator from within the car.',
+      type: 'Three-position key switch ("OFF", "ON", "BYPASS") for Phase I operation. In-car firefighter service key switch for Phase II operation.',
+      installation: 'Automatic recall must be initiated by smoke detectors installed in elevator lobbies, machine rooms, and hoistways. Visual signal must indicate when Phase I operation is in effect.',
+      maintenance: 'Monthly testing of Phase I recall; Quarterly testing of Phase II operation; Annual full system test including smoke detector activation.'
+    }
+  },
+  {
+    id: 'sprinkler-system-by-floors',
+    name: 'Sprinkler System Requirements by Number of Floors',
+    description: 'Sprinkler system requirements vary based on the number of floors in the building, with more stringent requirements for taller buildings.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      stories: 1
+    },
+    reference: 'RA 9514 IRR Rule 10.2.6.4 / NFPA 13/14',
+    specificRequirements: {
+      specifications: ({ stories }) => {
+        let requirements = '';
+        
+        if (stories >= 21) {
+          requirements = 'Wet pipe system with standpipes and fire pump, minimum 90-120 minutes water supply duration. Minimum residual pressure of 100 psi (6.9 bar) at topmost outlet. Multiple fire pumps or zones may be required, emergency power supply mandatory. Water storage tanks typically required.';
+        } else if (stories >= 7) {
+          requirements = 'Wet pipe system with standpipes, minimum 60-90 minutes water supply duration. Minimum residual pressure of 100 psi (6.9 bar) at topmost outlet. Fire pump required with backup power supply.';
+        } else if (stories >= 3) {
+          requirements = 'Wet pipe system with minimum 60 minutes water supply duration. Minimum residual pressure of 7 psi (0.5 bar) at most remote sprinkler. Dedicated water supply or fire pump may be required.';
+        } else {
+          requirements = 'Wet pipe system with minimum 30 minutes water supply duration for light hazard. Minimum residual pressure of 7 psi (0.5 bar) at most remote sprinkler. Can be supplied by domestic water supply if adequate.';
+        }
+        
+        return requirements;
+      },
+      type: 'Wet pipe system is standard. Dry pipe systems allowed only in areas subject to freezing. Pre-action systems may be required for sensitive areas like data centers or museums.',
+      installation: 'System must be installed in accordance with NFPA 13. High-rise buildings require standpipes in accordance with NFPA 14. Fire department connections must be provided at street level.',
+      maintenance: 'Weekly visual inspection of control valves; Monthly inspection of water flow alarm devices; Quarterly inspection of alarm devices; Annual inspection and testing of all components; Five-year internal inspection of piping.'
     }
   }
 ];

@@ -1,5 +1,6 @@
 import { OccupancyType } from '@/data/occupancyTypes';
 import { FireSafetyRequirement, fireSafetyRequirements } from '@/data/fireCodeRequirements';
+import { BuildingFeature } from '@/components/BuildingFeatures';
 
 export interface Floor {
   id: string;
@@ -14,6 +15,7 @@ export interface BuildingData {
   floors: Floor[];
   totalArea: number;
   totalOccupantLoad: number;
+  features?: BuildingFeature[];
 }
 
 /**

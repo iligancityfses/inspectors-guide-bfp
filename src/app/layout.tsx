@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import Footer from '@/components/Footer';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -20,10 +21,7 @@ export default function RootLayout({
         <main className="min-h-screen">
           {children}
         </main>
-        <footer className="bg-gray-100 py-3 text-center text-xs text-gray-600 border-t border-gray-200">
-          <p>Created by FO1 Gejon JNG, Iligan City Fire Station</p>
-          <p className="mt-1">Based on the Revised Fire Code of the Philippines (RA 9514 IRR 2019)</p>
-        </footer>
+        <Footer />
       </body>
     </html>
   );

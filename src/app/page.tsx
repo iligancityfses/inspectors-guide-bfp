@@ -4,33 +4,49 @@ import React, { useState } from 'react';
 import Header from '@/components/Header';
 import OccupancyTypeSelector from '@/components/OccupancyTypeSelector';
 import FloorManager from '@/components/FloorManager';
+import BuildingFeatures, { BuildingFeature } from '@/components/BuildingFeatures';
 import RequirementsList from '@/components/RequirementsList';
+import DocumentRequirements from '@/components/DocumentRequirements';
+import HazardousMaterialsFeeCalculator from '@/components/HazardousMaterialsFeeCalculator';
 import { OccupancyType } from '@/data/occupancyTypes';
 import { Floor, calculateBuildingData, determineRequiredFireSafetyMeasures } from '@/lib/calculations';
 import { FireSafetyRequirement } from '@/data/fireCodeRequirements';
+import { defaultBuildingFeatures } from '@/data/buildingFeatures';
 
 export default function Home() {
   const [selectedOccupancyType, setSelectedOccupancyType] = useState<OccupancyType | null>(null);
   const [floors, setFloors] = useState<Floor[]>([]);
+  const [buildingFeatures, setBuildingFeatures] = useState<BuildingFeature[]>(defaultBuildingFeatures);
   const [requirements, setRequirements] = useState<FireSafetyRequirement[]>([]);
   const [buildingData, setBuildingData] = useState<any>(null);
 
   const handleOccupancyTypeSelect = (occupancyType: OccupancyType) => {
+    console.log('handleOccupancyTypeSelect called with:', occupancyType);
+    
+    // Update the state with the new occupancy type
     setSelectedOccupancyType(occupancyType);
     
     // Recalculate occupant load for existing floors if occupancy type changes
     if (floors.length > 0) {
+      console.log('Recalculating for existing floors:', floors);
       const updatedFloors = floors.map(floor => ({
         ...floor,
         occupantLoad: Math.ceil(floor.area / occupancyType.occupantLoadFactor),
       }));
+      
+      // Update floors with new occupant loads
       setFloors(updatedFloors);
       
       // Update requirements based on new occupant load
       const newBuildingData = calculateBuildingData(occupancyType, updatedFloors);
+      newBuildingData.features = buildingFeatures.filter(feature => feature.selected);
       const newRequirements = determineRequiredFireSafetyMeasures(newBuildingData);
+      
+      // Update building data and requirements
       setBuildingData(newBuildingData);
       setRequirements(newRequirements);
+    } else {
+      console.log('No floors yet, just updating occupancy type');
     }
   };
 
@@ -39,6 +55,19 @@ export default function Home() {
     
     if (selectedOccupancyType) {
       const newBuildingData = calculateBuildingData(selectedOccupancyType, newFloors);
+      newBuildingData.features = buildingFeatures.filter(feature => feature.selected);
+      const newRequirements = determineRequiredFireSafetyMeasures(newBuildingData);
+      setBuildingData(newBuildingData);
+      setRequirements(newRequirements);
+    }
+  };
+  
+  const handleFeaturesChange = (newFeatures: BuildingFeature[]) => {
+    setBuildingFeatures(newFeatures);
+    
+    if (selectedOccupancyType && floors.length > 0) {
+      const newBuildingData = calculateBuildingData(selectedOccupancyType, floors);
+      newBuildingData.features = newFeatures.filter(feature => feature.selected);
       const newRequirements = determineRequiredFireSafetyMeasures(newBuildingData);
       setBuildingData(newBuildingData);
       setRequirements(newRequirements);
@@ -86,9 +115,30 @@ export default function Home() {
               </div>
             )}
             
+            {floors.length > 0 && (
+              <div className="transition-all duration-300 transform hover:scale-[1.01]">
+                <BuildingFeatures
+                  features={buildingFeatures}
+                  onFeaturesChange={handleFeaturesChange}
+                />
+              </div>
+            )}
+            
             {floors.length > 0 && buildingData && (
               <div className="transition-all duration-300">
                 <RequirementsList requirements={requirements} buildingData={buildingData} />
+              </div>
+            )}
+            
+            {selectedOccupancyType && (
+              <div className="transition-all duration-300 transform hover:scale-[1.01] mt-8">
+                <DocumentRequirements occupancyType={selectedOccupancyType} />
+              </div>
+            )}
+            
+            {selectedOccupancyType && (
+              <div className="transition-all duration-300 transform hover:scale-[1.01] mt-8">
+                <HazardousMaterialsFeeCalculator />
               </div>
             )}
           </div>
