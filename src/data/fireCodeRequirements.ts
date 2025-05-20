@@ -129,7 +129,7 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
         });
         
         // Find the most common requirement for display purposes
-        const counts = {};
+        const counts: { [key: string]: number } = {};
         floorRequirements.forEach(count => {
           counts[count] = (counts[count] || 0) + 1;
         });
