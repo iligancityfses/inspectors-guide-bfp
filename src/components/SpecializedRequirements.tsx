@@ -97,60 +97,60 @@ const SpecializedRequirements: React.FC<SpecializedRequirementsProps> = ({ occup
   };
   
   return (
-    <div className="mt-6 bg-white rounded-lg shadow-md p-4">
+    <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
       <div className="flex items-center mb-4">
         <FaExclamationTriangle className="text-yellow-500 mr-2 text-xl" />
-        <h2 className="text-lg font-semibold">Specialized Requirements</h2>
+        <h2 className="text-lg font-semibold dark:text-white">Specialized Requirements</h2>
       </div>
       
-      <div className="text-sm text-gray-600 mb-4">
+      <div className="text-sm text-gray-600 dark:text-gray-300 mb-4">
         The following specialized requirements apply to this occupancy type based on BFP memorandums, circulars, and guidelines. 
         Use this information to explain key safety requirements to building owners.
       </div>
       
       <div className="space-y-3">
         {requirements.map((requirement) => (
-          <div key={requirement.id} className="border border-gray-200 rounded-md">
+          <div key={requirement.id} className="border border-gray-200 dark:border-gray-700 rounded-md">
             <div 
-              className="flex justify-between items-center p-3 cursor-pointer hover:bg-gray-50"
+              className="flex justify-between items-center p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
               onClick={() => toggleRequirement(requirement.id)}
             >
               <div className="flex items-center">
                 <FaFileAlt className="text-blue-500 mr-2" />
-                <span className="font-medium">{requirement.name}</span>
+                <span className="font-medium dark:text-white">{requirement.name}</span>
               </div>
               {expandedRequirements.includes(requirement.id) ? 
-                <FaChevronUp className="text-gray-500" /> : 
-                <FaChevronDown className="text-gray-500" />
+                <FaChevronUp className="text-gray-500 dark:text-gray-400" /> : 
+                <FaChevronDown className="text-gray-500 dark:text-gray-400" />
               }
             </div>
             
             {expandedRequirements.includes(requirement.id) && (
-              <div className="p-3 border-t border-gray-200 bg-gray-50">
-                <p className="text-sm text-gray-600 mb-3">{requirement.description}</p>
+              <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{requirement.description}</p>
                 
                 {/* Simplified explanation for inspectors to explain to clients */}
-                <div className="bg-blue-50 p-3 rounded-md mb-3">
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md mb-3">
                   <div className="flex items-start">
                     <FaLightbulb className="text-blue-500 mt-1 mr-2 flex-shrink-0" />
                     <div>
-                      <p className="text-xs font-semibold text-blue-700 mb-1">HOW TO EXPLAIN TO CLIENTS:</p>
-                      <p className="text-sm">{generateSimplifiedExplanation(requirement)}</p>
+                      <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-1">HOW TO EXPLAIN TO CLIENTS:</p>
+                      <p className="text-sm dark:text-gray-300">{generateSimplifiedExplanation(requirement)}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Key points for quick reference */}
-                <div className="bg-green-50 p-3 rounded-md mb-3">
+                <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-md mb-3">
                   <div className="flex items-start">
                     <FaClipboard className="text-green-600 mt-1 mr-2 flex-shrink-0" />
                     <div>
-                      <p className="text-xs font-semibold text-green-700 mb-1">KEY POINTS:</p>
+                      <p className="text-xs font-semibold text-green-700 dark:text-green-300 mb-1">KEY POINTS:</p>
                       <ul className="text-sm space-y-1">
                         {extractKeyPoints(requirement.details).map((point, index) => (
                           <li key={index} className="flex items-start">
                             <FaCheck className="text-green-500 mt-1 mr-1 flex-shrink-0" />
-                            <span>{point}</span>
+                            <span className="dark:text-gray-300">{point}</span>
                           </li>
                         ))}
                       </ul>
@@ -159,14 +159,14 @@ const SpecializedRequirements: React.FC<SpecializedRequirementsProps> = ({ occup
                 </div>
 
                 {/* Reference information */}
-                <div className="bg-yellow-50 p-2 rounded mb-3 text-xs">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded mb-3 text-xs dark:text-gray-300">
                   <span className="font-semibold">Reference:</span> {requirement.reference}
                 </div>
                 
                 {/* Full details */}
-                <div className="border-t border-gray-200 pt-2 mt-2">
-                  <p className="text-xs font-semibold text-gray-500 mb-1">FULL DETAILS:</p>
-                  <p className="text-sm">{requirement.details}</p>
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1">FULL DETAILS:</p>
+                  <p className="text-sm dark:text-gray-300">{requirement.details}</p>
                 </div>
               </div>
             )}

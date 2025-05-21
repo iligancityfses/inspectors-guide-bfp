@@ -63,10 +63,10 @@ export default function Suggestion({ onClose }: SuggestionProps) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md relative">
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
           aria-label="Close"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -75,15 +75,15 @@ export default function Suggestion({ onClose }: SuggestionProps) {
         </button>
         
         <div className="p-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-800">Suggest Improvements</h2>
+          <h2 className="text-xl font-bold mb-4 text-gray-800 dark:text-white">Suggest Improvements</h2>
           
           {isSubmitted ? (
             <div className="text-center py-8">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-green-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              <h3 className="text-xl font-medium text-gray-800 mb-2">Thank You!</h3>
-              <p className="text-gray-600 mb-4">Your suggestion has been logged successfully.</p>
+              <h3 className="text-xl font-medium text-gray-800 dark:text-white mb-2">Thank You!</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-4">Your suggestion has been logged successfully.</p>
               <button 
                 onClick={onClose}
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
@@ -94,7 +94,7 @@ export default function Suggestion({ onClose }: SuggestionProps) {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Suggestion Type*
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -102,8 +102,8 @@ export default function Suggestion({ onClose }: SuggestionProps) {
                     type="button"
                     className={`py-2 px-3 rounded-md text-sm font-medium ${
                       suggestionType === 'fix' 
-                        ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                        : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border border-blue-300 dark:border-blue-700' 
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                     onClick={() => setSuggestionType('fix')}
                   >
@@ -113,8 +113,8 @@ export default function Suggestion({ onClose }: SuggestionProps) {
                     type="button"
                     className={`py-2 px-3 rounded-md text-sm font-medium ${
                       suggestionType === 'feature' 
-                        ? 'bg-green-100 text-green-800 border border-green-300' 
-                        : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border border-green-300 dark:border-green-700' 
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                     onClick={() => setSuggestionType('feature')}
                   >
@@ -124,8 +124,8 @@ export default function Suggestion({ onClose }: SuggestionProps) {
                     type="button"
                     className={`py-2 px-3 rounded-md text-sm font-medium ${
                       suggestionType === 'invalid' 
-                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' 
-                        : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                        ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700' 
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                     onClick={() => setSuggestionType('invalid')}
                   >
@@ -135,8 +135,8 @@ export default function Suggestion({ onClose }: SuggestionProps) {
                     type="button"
                     className={`py-2 px-3 rounded-md text-sm font-medium ${
                       suggestionType === 'other' 
-                        ? 'bg-purple-100 text-purple-800 border border-purple-300' 
-                        : 'bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200'
+                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700' 
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                     onClick={() => setSuggestionType('other')}
                   >
@@ -146,7 +146,7 @@ export default function Suggestion({ onClose }: SuggestionProps) {
               </div>
               
               <div>
-                <label htmlFor="details" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="details" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Details*
                 </label>
                 <textarea
@@ -154,14 +154,14 @@ export default function Suggestion({ onClose }: SuggestionProps) {
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Briefly describe your suggestion..."
                   required
                 />
               </div>
               
               {error && (
-                <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">
+                <div className="p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
                   {error}
                 </div>
               )}
@@ -170,7 +170,7 @@ export default function Suggestion({ onClose }: SuggestionProps) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="mr-2 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="mr-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   Cancel
                 </button>

@@ -118,37 +118,37 @@ const FireFlowCalculator: React.FC = () => {
   }, [buildingArea, constructionType, exposures, occupancyHazard, sprinklered]);
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
+    <div>
       <div className="flex items-center mb-4">
-        <FaCalculator className="text-blue-600 text-2xl mr-2" />
-        <h2 className="text-xl font-bold">Fire Flow Calculator</h2>
+        <FaCalculator className="text-blue-600 dark:text-blue-400 mr-2" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Fire Flow Calculator</h3>
       </div>
       
-      <div className="text-sm text-gray-600 mb-4">
-        <p>This calculator determines the required fire flow (water supply) for firefighting operations based on building characteristics. The calculation is based on NFPA 1142 and adjusted for Philippine conditions.</p>
-      </div>
+      <p className="mb-4 text-gray-600 dark:text-gray-300">
+        This calculator determines the required fire flow (water supply) for firefighting operations based on building characteristics. The calculation is based on NFPA 1142 and adjusted for Philippine conditions.
+      </p>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Building Area (m²)
             </label>
             <input
               type="number"
               min="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               value={buildingArea || ''}
               onChange={(e) => setBuildingArea(Number(e.target.value))}
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Construction Type
             </label>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               value={constructionType}
               onChange={(e) => setConstructionType(e.target.value)}
             >
@@ -158,17 +158,17 @@ const FireFlowCalculator: React.FC = () => {
                 </option>
               ))}
             </select>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               {constructionTypes.find(type => type.id === constructionType)?.description}
             </p>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Number of Exposures (0-4)
             </label>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               value={exposures}
               onChange={(e) => setExposures(Number(e.target.value))}
             >
@@ -178,7 +178,7 @@ const FireFlowCalculator: React.FC = () => {
               <option value={3}>3 - Three sides exposed</option>
               <option value={4}>4 - Four sides exposed</option>
             </select>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Exposures are nearby buildings that could be threatened by fire spread
             </p>
           </div>
@@ -186,11 +186,11 @@ const FireFlowCalculator: React.FC = () => {
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Occupancy Hazard Classification
             </label>
             <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
               value={occupancyHazard}
               onChange={(e) => setOccupancyHazard(e.target.value)}
             >
@@ -204,40 +204,40 @@ const FireFlowCalculator: React.FC = () => {
             <input
               type="checkbox"
               id="sprinklered"
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              className="h-4 w-4 text-blue-600 dark:text-blue-500 focus:ring-blue-500 dark:focus:ring-blue-400 border-gray-300 dark:border-gray-600 rounded"
               checked={sprinklered}
               onChange={(e) => setSprinklered(e.target.checked)}
             />
-            <label htmlFor="sprinklered" className="ml-2 block text-sm text-gray-700">
+            <label htmlFor="sprinklered" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
               Building is fully sprinklered
             </label>
           </div>
           
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <h3 className="font-semibold text-blue-800 mb-2">Required Fire Flow</h3>
+          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+            <h3 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">Required Fire Flow</h3>
             <div className="flex items-center">
-              <span className="text-3xl font-bold text-blue-700">{requiredFireFlow.toLocaleString()}</span>
-              <span className="ml-2 text-blue-600">GPM (Gallons Per Minute)</span>
+              <span className="text-3xl font-bold text-blue-700 dark:text-blue-400">{requiredFireFlow.toLocaleString()}</span>
+              <span className="ml-2 text-blue-600 dark:text-blue-300">GPM (Gallons Per Minute)</span>
             </div>
-            <p className="text-sm text-blue-600 mt-1">
+            <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
               {requiredFireFlow > 0 ? `${Math.round(requiredFireFlow * 3.785 / 60)} liters per second` : ''}
             </p>
             
-            <h3 className="font-semibold text-blue-800 mt-4 mb-2">Duration Required</h3>
+            <h3 className="font-semibold text-blue-800 dark:text-blue-300 mt-4 mb-2">Duration Required</h3>
             <div className="flex items-center">
-              <span className="text-2xl font-bold text-blue-700">{duration}</span>
-              <span className="ml-2 text-blue-600">hours</span>
+              <span className="text-2xl font-bold text-blue-700 dark:text-blue-400">{duration}</span>
+              <span className="ml-2 text-blue-600 dark:text-blue-300">hours</span>
             </div>
-            <p className="text-sm text-blue-600 mt-1">
+            <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
               {requiredFireFlow > 0 ? `Total water required: ${(requiredFireFlow * duration * 60).toLocaleString()} gallons (${Math.round(requiredFireFlow * duration * 60 * 3.785).toLocaleString()} liters)` : ''}
             </p>
           </div>
         </div>
       </div>
       
-      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-yellow-800">
+      <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md text-sm text-yellow-800 dark:text-yellow-300">
         <div className="flex items-start">
-          <FaInfoCircle className="text-yellow-600 mt-1 mr-2" />
+          <FaInfoCircle className="text-yellow-600 dark:text-yellow-400 mt-1 mr-2" />
           <div>
             <p><strong>Note:</strong> This calculator provides an estimate based on standard formulas. Actual requirements may vary based on local conditions and BFP regulations. Always consult with your local fire officials for official determinations.</p>
             <p className="mt-2">Reference: NFPA 1142 Standard on Water Supplies for Suburban and Rural Fire Fighting, adapted for Philippine conditions.</p>

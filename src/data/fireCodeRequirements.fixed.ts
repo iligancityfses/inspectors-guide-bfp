@@ -1,0 +1,156 @@
+import { Floor, calculatePumpPressure, calculatePumpFlowRate, calculatePumpHorsepower, PUMP_CONSTANTS } from '@/lib/calculations';
+
+export interface FireSafetyRequirement {
+  id: string;
+  name: string;
+  description: string;
+  applicableOccupancies: string[];
+  thresholds: {
+    occupantLoad?: number;
+    stories?: number;
+    floorArea?: number;
+    buildingHeight?: number; // in meters
+  };
+  reference: string;
+  specificRequirements?: {
+    quantity?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, floors?: Floor[] }) => string);
+    type?: string;
+    specifications?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, buildingHeight: number, floors?: Floor[], occupancyType?: any }) => string);
+    distribution?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, buildingHeight: number, floors?: Floor[], occupancyType?: any }) => string);
+    installation?: string;
+    maintenance?: string;
+  };
+}
+
+// This data is based on the Revised Fire Code of the Philippines (RA 9514 IRR 2019)
+// Rule 10 of the IRR covers Fire Protection Features and Fire Safety Requirements
+export const fireSafetyRequirements: FireSafetyRequirement[] = [
+  {
+    id: 'automatic-sprinkler-system',
+    name: 'Automatic Sprinkler System',
+    description: 'An automatic sprinkler system shall be installed in buildings with a height of more than 15 meters (50 feet) or with an occupant load of more than 500 persons, or buildings with a total floor area exceeding 2,000 square meters. Certain occupancies require sprinkler systems regardless of height or size, including healthcare facilities, high hazard occupancies, detention facilities, and mall complexes. Single-story business establishments under 2,000 square meters with occupant load less than 500 are exempt unless they fall into a special category.',
+    applicableOccupancies: [
+      'assembly', 'educational', 'healthcare-hospitals', 'healthcare-outpatient', 'healthcare-nursing-homes', 
+      'institutional-restrained', 'institutional-general', 'mercantile', 'industrial-general', 'industrial-special',
+      'industrial-high-hazard', 'storage-low-hazard', 'storage-moderate-hazard', 'storage-high-hazard',
+      'mixed-use', 'residential-hotel', 'residential-apartment', 'residential-dormitories',
+      'business-data-centers', 'laboratory', 'waste-management-facility', 'power-generation-plant'
+    ],
+    thresholds: {
+      occupantLoad: 500,
+      stories: 5, // Assuming average floor height of 3m, so 15m ÷ 3m = 5 floors
+      buildingHeight: 15,
+      floorArea: 2000
+    },
+    reference: 'RA 9514 IRR Rule 10.2.6.4',
+    specificRequirements: {
+      specifications: ({ buildingHeight, stories, occupantLoad, occupancyType }) => {
+        const actualHeight = buildingHeight || stories * 3;
+        const pumpPSI = calculatePumpPressure(actualHeight);
+        
+        let sprinklerType = "Quick response";
+        if (occupantLoad > 1000) {
+          sprinklerType = "Standard response";
+        }
+        
+        // Special requirements based on occupancy type
+        let specialRequirements = '';
+        const occupancyId = occupancyType?.id || '';
+        
+        if (occupancyId.includes('healthcare') || occupancyId.includes('hospital')) {
+          specialRequirements = ' Healthcare facilities require quick response sprinklers throughout. Water supply duration must be minimum 60 minutes.';
+        } else if (occupancyId.includes('high-hazard') || occupancyId.includes('storage-high')) {
+          specialRequirements = ' High hazard occupancies require higher density sprinkler systems with minimum water supply duration of 90 minutes.';
+        } else if (occupancyId.includes('mall')) {
+          specialRequirements = ' Mall complexes require sprinkler systems throughout, including in concealed spaces and service corridors.';
+        } else if (occupancyId.includes('detention') || occupancyId.includes('correctional') || occupancyId.includes('restrained')) {
+          specialRequirements = ' Detention facilities require institutional sprinklers with tamper-resistant features.';
+        }
+        
+        return `Fire pump minimum pressure: ${pumpPSI} PSI. Water supply duration: minimum 30-60 minutes depending on hazard classification. Sprinkler heads: ${sprinklerType} type for light hazard; Standard response for ordinary and high hazard occupancies.${specialRequirements}`;
+      },
+      type: 'Wet pipe system with water under pressure at all times. Dry pipe systems allowed only in areas subject to freezing. Pre-action systems for data centers and electronic equipment areas. ESFR (Early Suppression Fast Response) sprinklers for high-piled storage areas.',
+      distribution: ({ floorArea, occupancyType }) => {
+        // Calculate approximate number of sprinklers based on floor area and hazard classification
+        const hazardClass = occupancyType?.hazardClassification || 'light';
+        let coverageArea = 20.9; // sq m per sprinkler for light hazard
+        
+        if (hazardClass === 'ordinary') {
+          coverageArea = 12.1; // sq m per sprinkler
+        } else if (hazardClass === 'high') {
+          coverageArea = 9.3; // sq m per sprinkler
+        }
+        
+        // Estimate number of sprinklers
+        const estimatedSprinklers = Math.ceil(floorArea / coverageArea);
+        
+        return `Light hazard: One sprinkler per 20.9 sq m (225 sq ft); Ordinary hazard: One sprinkler per 12.1 sq m (130 sq ft); High hazard: One sprinkler per 9.3 sq m (100 sq ft). Estimated number of sprinklers needed for this building: approximately ${estimatedSprinklers} heads based on total floor area.`;
+      },
+      installation: 'Sprinkler heads must be installed in accordance with NFPA 13. Maximum distance between sprinklers: 4.6 meters (15 feet) for light hazard; 4.0 meters (13 feet) for ordinary hazard; 3.7 meters (12 feet) for high hazard. Minimum pipe sizes: 25mm (1-inch) for branch lines serving up to 8 sprinklers; 32mm (1.25-inch) for up to 15 sprinklers; 40mm (1.5-inch) for up to 30 sprinklers; 50mm (2-inch) for up to 60 sprinklers.',
+      maintenance: 'Weekly visual inspection of control valves; Monthly inspection of water flow alarm devices; Quarterly inspection of alarm devices; Annual inspection and testing of all components; Five-year internal inspection of piping. Spare sprinkler cabinet must contain at least 6 spare sprinklers of each type used in the building, a sprinkler wrench, and NFPA 25 inspection requirements.'
+    }
+  },
+  {
+    id: 'alternative-automatic-fire-extinguishing-system',
+    name: 'Alternative Automatic Fire Extinguishing System',
+    description: 'Alternative automatic fire extinguishing systems shall be installed in areas where water-based systems are not suitable, such as commercial kitchens, computer rooms, and areas with flammable liquids.',
+    applicableOccupancies: ['all'],
+    thresholds: {},
+    reference: 'RA 9514 IRR Rule 10.2.6.6',
+    specificRequirements: {
+      specifications: ({ occupantLoad }) => {
+        let systemType = "Dry chemical, wet chemical, or clean agent system";
+        if (occupantLoad > 300) {
+          systemType = "Clean agent system with automatic detection and manual activation capability";
+        }
+        return `${systemType} appropriate for the specific hazard being protected.`;
+      },
+      type: 'Commercial kitchen: Wet chemical system; Computer rooms: Clean agent system; Flammable liquid areas: Dry chemical or foam system',
+      distribution: 'System coverage must be designed for the specific hazard and area being protected',
+      installation: 'Systems must be installed in accordance with applicable NFPA standards or equivalent. Automatic detection devices must be provided',
+      maintenance: 'Semi-annual inspection of all components; Annual testing of system operation; Recharge or replacement as required by manufacturer specifications'
+    }
+  },
+  {
+    id: 'fire-extinguishers',
+    name: 'Portable Fire Extinguishers',
+    description: 'Portable fire extinguishers shall be installed in all occupancies. The type, size, and distribution shall be in accordance with the requirements of the Fire Code.',
+    applicableOccupancies: ['all'],
+    thresholds: {},
+    reference: 'RA 9514 IRR Rule 10.2.6.7',
+    specificRequirements: {
+      quantity: ({ floorArea, floors, occupantLoad }) => {
+        // Get the number of floors
+        const floorCount = floors ? floors.length : 1;
+        
+        // Calculate the number of extinguishers based on floor area
+        // For light hazard: 1 extinguisher per 280 sq m
+        // For ordinary hazard: 1 extinguisher per 140 sq m
+        // For high hazard: 1 extinguisher per 90 sq m
+        
+        let baseArea = 280; // sq m per extinguisher for light hazard
+        
+        // Adjust based on occupant load (as a proxy for hazard level)
+        if (occupantLoad > 500) {
+          baseArea = 140; // ordinary hazard
+        }
+        if (occupantLoad > 1000) {
+          baseArea = 90; // high hazard
+        }
+        
+        // Calculate total number of extinguishers needed
+        const totalExtinguishers = Math.ceil(floorArea / baseArea);
+        
+        // Distribute across floors
+        const extinguishersPerFloor = Math.ceil(totalExtinguishers / floorCount);
+        
+        return `Minimum ${totalExtinguishers} fire extinguishers required for the building (approximately ${extinguishersPerFloor} per floor). Maximum travel distance to a fire extinguisher should not exceed 23 meters (75 feet).`;
+      },
+      type: 'Type ABC (multi-purpose dry chemical) for general areas; Type K for kitchens; Type BC for electrical equipment areas. For computer rooms and sensitive electronic equipment areas, clean agent extinguishers are recommended.',
+      specifications: 'Minimum rating of 2-A:10-B:C for light hazard occupancies; 4-A:40-B:C for ordinary hazard; 6-A:80-B:C for high hazard. Each extinguisher must have a valid inspection tag and be fully charged.',
+      distribution: 'Maximum travel distance of 23 meters (75 feet) to a fire extinguisher. Extinguishers must be placed along normal paths of travel and near exits. Additional extinguishers are required for specific hazards such as kitchens, mechanical rooms, and storage areas.',
+      installation: 'Top of extinguisher not more than 1.5 meters (5 feet) above the floor; bottom not less than 10 cm (4 inches) above the floor. Extinguishers weighing more than 18 kg (40 lbs) must be installed so that the top is not more than 1.07 meters (3.5 feet) above the floor.',
+      maintenance: 'Monthly visual inspection; annual maintenance by certified technician; hydrostatic testing every 5-12 years depending on type; immediate replacement of damaged or discharged extinguishers.'
+    }
+  }
+];

@@ -111,21 +111,21 @@ export default function HazardousMaterialsFeeCalculator() {
   };
 
   return (
-    <div className="card">
-      <h2 className="text-xl font-semibold mb-4">Hazardous Materials Fee Calculator</h2>
-      <p className="text-gray-600 mb-4">
+    <div className="card bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+      <h2 className="text-xl font-semibold mb-4 dark:text-white">Hazardous Materials Fee Calculator</h2>
+      <p className="text-gray-600 dark:text-gray-300 mb-4">
         Calculate fees for hazardous materials based on the Revised Fire Code of the Philippines (RA 9514 IRR 2019).
         Inspectors can use this to determine how much building owners should pay for hazardous materials storage.
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div>
-          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Hazardous Material Category
           </label>
           <select
             id="category"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
           >
@@ -139,14 +139,14 @@ export default function HazardousMaterialsFeeCalculator() {
         </div>
 
         {categoryDetails && (
-          <div className="md:col-span-2 bg-gray-50 p-4 rounded-md mb-4">
-            <h3 className="font-medium">{categoryDetails.name}</h3>
-            <p className="text-sm text-gray-600 mb-2">{categoryDetails.description}</p>
-            <div className="text-sm">
-              <p><span className="font-medium">Fee per liter:</span> {formatCurrency(categoryDetails.feePerLiter)}</p>
-              <p><span className="font-medium">Fee per kg:</span> {formatCurrency(categoryDetails.feePerKg)}</p>
-              <p><span className="font-medium">Minimum fee:</span> {formatCurrency(categoryDetails.minimumFee)}</p>
-              <p className="mt-1"><span className="font-medium">Examples:</span> {categoryDetails.examples.join(', ')}</p>
+          <div className="md:col-span-2 bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4">
+            <h3 className="font-medium dark:text-white">{categoryDetails.name}</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{categoryDetails.description}</p>
+            <div className="text-sm dark:text-gray-200">
+              <p><span className="font-medium dark:text-gray-100">Fee per liter:</span> {formatCurrency(categoryDetails.feePerLiter)}</p>
+              <p><span className="font-medium dark:text-gray-100">Fee per kg:</span> {formatCurrency(categoryDetails.feePerKg)}</p>
+              <p><span className="font-medium dark:text-gray-100">Minimum fee:</span> {formatCurrency(categoryDetails.minimumFee)}</p>
+              <p className="mt-1"><span className="font-medium dark:text-gray-100">Examples:</span> {categoryDetails.examples.join(', ')}</p>
             </div>
           </div>
         )}
@@ -154,12 +154,12 @@ export default function HazardousMaterialsFeeCalculator() {
         {selectedCategory && (
           <>
             <div>
-              <label htmlFor="material" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="material" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Material
               </label>
               <select
                 id="material"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 value={selectedMaterial}
                 onChange={(e) => setSelectedMaterial(e.target.value)}
                 disabled={materialsInCategory.length === 0}
@@ -177,7 +177,7 @@ export default function HazardousMaterialsFeeCalculator() {
             </div>
 
             <div>
-              <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Quantity ({unit})
               </label>
               <div className="flex">
@@ -186,13 +186,13 @@ export default function HazardousMaterialsFeeCalculator() {
                   type="number"
                   min="0.01"
                   step="0.01"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   placeholder={`Enter quantity in ${unit}`}
                 />
                 <select
-                  className="px-3 py-2 border border-gray-300 border-l-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 border-l-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   value={unit}
                   onChange={(e) => setUnit(e.target.value as 'liter' | 'kg')}
                 >
@@ -217,35 +217,35 @@ export default function HazardousMaterialsFeeCalculator() {
 
       {materialEntries.length > 0 && (
         <div className="mt-6">
-          <h3 className="text-lg font-medium mb-3">Added Materials</h3>
+          <h3 className="text-lg font-medium mb-3 dark:text-white">Added Materials</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Material
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Quantity
                   </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Fee
                   </th>
-                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {materialEntries.map((entry) => (
                   <tr key={entry.id}>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {getMaterialName(entry.materialId)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {entry.quantity} {entry.unit}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {formatCurrency(entry.fee)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
@@ -260,11 +260,11 @@ export default function HazardousMaterialsFeeCalculator() {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="bg-gray-50">
-                  <td colSpan={2} className="px-4 py-3 text-right font-medium">
+                <tr className="bg-gray-50 dark:bg-gray-700">
+                  <td colSpan={2} className="px-4 py-3 text-right font-medium dark:text-white">
                     Total Fee:
                   </td>
-                  <td className="px-4 py-3 font-medium text-blue-700">
+                  <td className="px-4 py-3 font-medium text-blue-700 dark:text-blue-400">
                     {formatCurrency(totalFee)}
                   </td>
                   <td></td>
@@ -273,9 +273,9 @@ export default function HazardousMaterialsFeeCalculator() {
             </table>
           </div>
           
-          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-            <h4 className="font-medium text-blue-800 mb-2">Fee Calculation Reference</h4>
-            <p className="text-sm text-gray-700">
+          <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+            <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-2">Fee Calculation Reference</h4>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
               Fees are calculated based on Rule 11.3 of the Revised Fire Code of the Philippines (RA 9514 IRR 2019).
               The fee structure includes a per-unit fee (per liter or per kilogram) with a minimum fee requirement for each category.
               For materials that can be measured in both volume and weight, the appropriate conversion is applied based on the material's density.

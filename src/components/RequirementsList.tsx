@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { FireSafetyRequirement } from '@/data/fireCodeRequirements';
-import { BuildingData } from '@/lib/calculations';
+import { BuildingData, calculatePumpPressure, calculatePumpFlowRate } from '@/lib/calculations';
 import NfpaReferences from './NfpaReferences';
+import PumpHorsepowerCalculator from './PumpHorsepowerCalculator';
 
 interface RequirementsListProps {
   requirements: FireSafetyRequirement[];
@@ -72,30 +73,30 @@ export default function RequirementsList({ requirements, buildingData }: Require
   const groupedRequirements = groupRequirementsByCategory(requirements);
   if (requirements.length === 0) {
     return (
-      <div className="card mt-6">
-        <h2 className="text-xl font-semibold mb-4">Fire Safety Requirements</h2>
-        <p className="text-gray-500">No requirements to display. Please complete the previous steps.</p>
+      <div className="card mt-6 dark:bg-gray-800 dark:border-gray-700">
+        <h2 className="text-xl font-semibold mb-4 dark:text-white">Fire Safety Requirements</h2>
+        <p className="text-gray-500 dark:text-gray-400">No requirements to display. Please complete the previous steps.</p>
       </div>
     );
   }
 
   return (
-    <div className="card mt-6">
-      <h2 className="text-xl font-semibold mb-4">Step 3: Fire Safety Requirements</h2>
-      <p className="mb-4 text-sm text-gray-600">
+    <div className="card mt-6 dark:bg-gray-800 dark:border-gray-700">
+      <h2 className="text-xl font-semibold mb-4 dark:text-white">Step 3: Fire Safety Requirements</h2>
+      <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
         Based on the building information provided, the following fire safety requirements apply according to RA 9514 IRR 2019:
       </p>
       
-      <div className="mb-4 p-4 bg-blue-50 rounded-md">
+      <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md">
         <div className="flex items-start">
           <div className="flex-shrink-0 mt-0.5">
-            <svg className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>
           </div>
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800">Building Summary</h3>
-            <div className="mt-2 text-sm text-blue-700">
+            <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">Building Summary</h3>
+            <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
               <ul className="list-disc pl-5 space-y-1">
                 <li>Occupancy Type: {buildingData.occupancyType.name}</li>
                 <li>Hazard Classification: {buildingData.occupancyType.hazardClassification || 'Not specified'}</li>
@@ -109,42 +110,42 @@ export default function RequirementsList({ requirements, buildingData }: Require
         </div>
       </div>
       
-      <div className="mb-4 p-4 bg-yellow-50 rounded-md border-l-4 border-yellow-500">
+      <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border-l-4 border-yellow-500 dark:border-yellow-600">
         <div className="flex items-start">
           <div className="flex-shrink-0 mt-0.5">
-            <svg className="h-5 w-5 text-yellow-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="h-5 w-5 text-yellow-600 dark:text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>
           </div>
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-yellow-800">Important Notice</h3>
-            <div className="mt-2 text-sm text-yellow-700">
+            <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Important Notice</h3>
+            <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
               <p>This guide provides requirements based on the Revised Fire Code of the Philippines (RA 9514 IRR 2019). Final determination of applicable requirements must be made by qualified fire safety inspectors using their professional judgment.</p>
             </div>
             <div className="mt-2">
-              <Link href="/disclaimer" className="text-sm font-medium text-yellow-600 hover:text-yellow-500">View full disclaimer →</Link>
+              <Link href="/disclaimer" className="text-sm font-medium text-yellow-600 hover:text-yellow-500 dark:text-yellow-400 dark:hover:text-yellow-300">View full disclaimer →</Link>
             </div>
           </div>
         </div>
       </div>
       
       <div className="mb-6">
-        <div className="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 mb-4">
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md border-l-4 border-blue-500 dark:border-blue-600 mb-4">
           <div className="flex items-start">
             <div className="flex-shrink-0 mt-0.5">
-              <svg className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
               </svg>
             </div>
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">NFPA References</h3>
-              <div className="mt-2 text-sm text-blue-700">
+              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">NFPA References</h3>
+              <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
                 <p>The following requirements include references to National Fire Protection Association (NFPA) standards. Click below to view detailed NFPA references for specific requirements.</p>
               </div>
               <div className="mt-2">
                 <button 
                   onClick={() => setShowNfpaReferences(!showNfpaReferences)} 
-                  className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                  className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
                 >
                   {showNfpaReferences ? 'Hide NFPA References' : 'Show NFPA References'} →
                 </button>
@@ -165,22 +166,22 @@ export default function RequirementsList({ requirements, buildingData }: Require
         )}
         
         {buildingData && buildingData.features && buildingData.features.length > 0 && (
-          <div className="bg-blue-50 p-4 rounded-md border-l-4 border-blue-500 mb-6">
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md border-l-4 border-blue-500 dark:border-blue-600 mb-6">
             <div className="flex items-start">
               <div className="flex-shrink-0 mt-0.5">
-                <svg className="h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800">Building Feature Requirements</h3>
-                <div className="mt-2 text-sm text-blue-700">
+                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300">Building Feature Requirements</h3>
+                <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
                   <p>The following requirements are specific to the building features you selected.</p>
                 </div>
                 <div className="mt-2">
                   <button 
                     onClick={() => setShowFeatureRequirements(!showFeatureRequirements)} 
-                    className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                    className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
                   >
                     {showFeatureRequirements ? 'Hide Feature Requirements' : 'Show Feature Requirements'} →
                   </button>
@@ -393,14 +394,14 @@ export default function RequirementsList({ requirements, buildingData }: Require
               }
               
               return featureRequirements.length > 0 ? (
-                <div key={feature.id} className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">{feature.name} Requirements</h3>
+                <div key={feature.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow border-l-4 border-blue-500 dark:border-blue-400">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">{feature.name} Requirements</h3>
                   <div className="space-y-3">
                     {featureRequirements.map((req, index) => (
-                      <div key={index} className="bg-gray-50 p-3 rounded">
-                        <h4 className="font-medium text-gray-800">{req.title}</h4>
-                        <p className="text-sm text-gray-600 mt-1">{req.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">Reference: {req.reference}</p>
+                      <div key={index} className="bg-gray-50 dark:bg-gray-700 p-3 rounded">
+                        <h4 className="font-medium text-gray-800 dark:text-white">{req.title}</h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{req.description}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Reference: {req.reference}</p>
                         
                         {/* Expandable section for detailed specifications */}
                         <div className="mt-2">
@@ -410,7 +411,7 @@ export default function RequirementsList({ requirements, buildingData }: Require
                               newExpandedText[`${feature.id}-${index}`] = !expandedText[`${feature.id}-${index}`];
                               setExpandedText(newExpandedText);
                             }}
-                            className="text-xs font-medium text-blue-600 hover:text-blue-500 flex items-center"
+                            className="text-xs font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 flex items-center"
                           >
                             {expandedText[`${feature.id}-${index}`] ? 'Hide details' : 'Show details'}
                             <svg className={`ml-1 h-4 w-4 transition-transform ${expandedText[`${feature.id}-${index}`] ? 'transform rotate-180' : ''}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -420,29 +421,29 @@ export default function RequirementsList({ requirements, buildingData }: Require
                         </div>
                         
                         {expandedText[`${feature.id}-${index}`] && (
-                          <div className="mt-2 text-xs border-t border-gray-200 pt-2">
+                          <div className="mt-2 text-xs border-t border-gray-200 dark:border-gray-600 pt-2">
                             {req.specifications && (
                               <div className="mb-2">
-                                <span className="font-medium text-gray-700">Specifications: </span>
-                                <span className="text-gray-600">{req.specifications}</span>
+                                <span className="font-medium text-gray-700 dark:text-gray-300">Specifications: </span>
+                                <span className="text-gray-600 dark:text-gray-400">{req.specifications}</span>
                               </div>
                             )}
                             {req.installation && (
                               <div className="mb-2">
-                                <span className="font-medium text-gray-700">Installation: </span>
-                                <span className="text-gray-600">{req.installation}</span>
+                                <span className="font-medium text-gray-700 dark:text-gray-300">Installation: </span>
+                                <span className="text-gray-600 dark:text-gray-400">{req.installation}</span>
                               </div>
                             )}
                             {req.maintenance && (
                               <div className="mb-2">
-                                <span className="font-medium text-gray-700">Maintenance: </span>
-                                <span className="text-gray-600">{req.maintenance}</span>
+                                <span className="font-medium text-gray-700 dark:text-gray-300">Maintenance: </span>
+                                <span className="text-gray-600 dark:text-gray-400">{req.maintenance}</span>
                               </div>
                             )}
                             {req.testing && (
                               <div className="mb-2">
-                                <span className="font-medium text-gray-700">Testing: </span>
-                                <span className="text-gray-600">{req.testing}</span>
+                                <span className="font-medium text-gray-700 dark:text-gray-300">Testing: </span>
+                                <span className="text-gray-600 dark:text-gray-400">{req.testing}</span>
                               </div>
                             )}
                           </div>
@@ -458,15 +459,15 @@ export default function RequirementsList({ requirements, buildingData }: Require
         
         <div className="space-y-6">
           {groupedRequirements.map(([category, categoryRequirements]) => (
-          <div key={category} className="border border-gray-200 rounded-md overflow-hidden">
+          <div key={category} className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
             <div 
-              className={`flex justify-between items-center cursor-pointer p-4 ${expandedCategory === category ? 'bg-gray-100' : 'bg-white'}`}
+              className={`flex justify-between items-center cursor-pointer p-4 ${expandedCategory === category ? 'bg-gray-100 dark:bg-gray-700' : 'bg-white dark:bg-gray-800'}`}
               onClick={() => toggleCategory(category)}
             >
-              <h3 className="font-medium text-lg">{category}</h3>
+              <h3 className="font-medium text-lg dark:text-white">{category}</h3>
               <div className="flex items-center">
-                <span className="mr-2 text-sm text-gray-500">{categoryRequirements.length} item(s)</span>
-                <button className="text-primary-600">
+                <span className="mr-2 text-sm text-gray-500 dark:text-gray-400">{categoryRequirements.length} item(s)</span>
+                <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
                   {expandedCategory === category ? (
                     <span>▲ Collapse</span>
                   ) : (
@@ -477,7 +478,7 @@ export default function RequirementsList({ requirements, buildingData }: Require
             </div>
             
             {expandedCategory === category && (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
                 {categoryRequirements.map((requirement) => {
                   const isExpanded = expandedRequirements.includes(requirement.id);
                   
@@ -487,7 +488,8 @@ export default function RequirementsList({ requirements, buildingData }: Require
                     occupantLoad: buildingData.totalOccupantLoad,
                     floorArea: buildingData.totalArea,
                     stories: buildingData.floors.length,
-                    buildingHeight: buildingData.floors.length * 3 // Estimate height based on 3m per floor
+                    buildingHeight: buildingData.floors.length * 3, // Estimate height based on 3m per floor
+                    occupancyType: buildingData.occupancyType // Pass the occupancy type to the specifications function
                   };
                   
                   const quantity = specificReqs?.quantity ? 
@@ -497,15 +499,31 @@ export default function RequirementsList({ requirements, buildingData }: Require
                   const specifications = specificReqs?.specifications ? 
                     (typeof specificReqs.specifications === 'function' ? specificReqs.specifications(params) : specificReqs.specifications) : 
                     null;
+                    
+                  const type = specificReqs?.type ? 
+                    (typeof specificReqs.type === 'function' ? specificReqs.type(params) : specificReqs.type) : 
+                    null;
+                    
+                  const distribution = specificReqs?.distribution ? 
+                    (typeof specificReqs.distribution === 'function' ? specificReqs.distribution(params) : specificReqs.distribution) : 
+                    null;
+                    
+                  const installation = specificReqs?.installation ? 
+                    (typeof specificReqs.installation === 'function' ? specificReqs.installation(params) : specificReqs.installation) : 
+                    null;
+                    
+                  const maintenance = specificReqs?.maintenance ? 
+                    (typeof specificReqs.maintenance === 'function' ? specificReqs.maintenance(params) : specificReqs.maintenance) : 
+                    null;
                   
                   return (
-                    <div key={requirement.id} className="p-4">
+                    <div key={requirement.id} className="p-4 dark:bg-gray-800">
                       <div 
                         className="flex justify-between items-center cursor-pointer" 
                         onClick={() => toggleRequirement(requirement.id)}
                       >
-                        <h3 className="font-medium text-md">{requirement.name}</h3>
-                        <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-md transition-colors">
+                        <h3 className="font-medium text-md dark:text-white">{requirement.name}</h3>
+                        <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white text-sm rounded-md transition-colors">
                           {isExpanded ? (
                             <span>▲ Less details</span>
                           ) : (
@@ -514,24 +532,37 @@ export default function RequirementsList({ requirements, buildingData }: Require
                         </button>
                       </div>
                       
-                      <p className="text-gray-600 mt-1 text-sm">{requirement.description}</p>
-                      <div className="mt-1 text-xs text-blue-600">
+                      <p className="text-gray-600 dark:text-gray-300 mt-1 text-sm">{requirement.description}</p>
+                      <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
                         <span className="font-medium">Reference:</span> {requirement.reference}
                       </div>
                       
                       {quantity && (
-                        <div className="mt-2 bg-blue-50 p-2 rounded">
-                          <p className="font-medium text-blue-800 text-sm">{quantity}</p>
+                        <div className="mt-2 bg-blue-50 dark:bg-blue-900/20 p-2 rounded">
+                          <p className="font-medium text-blue-800 dark:text-blue-300 text-sm">{quantity}</p>
                         </div>
                       )}
                       
                       {isExpanded && (
-                        <div className="mt-4 space-y-3 bg-gray-50 p-3 rounded-md border-l-2 border-blue-500">
+                        <div className="mt-4 space-y-3 bg-gray-50 dark:bg-gray-700 p-3 rounded-md border-l-2 border-blue-500 dark:border-blue-400">
+                          {/* Add Pump Horsepower Calculator for fire pump and sprinkler system requirements */}
+                          {(requirement.id === 'fire-pump' || requirement.id === 'automatic-sprinkler-system') && (
+                            <div className="mb-4">
+                              <h4 className="font-medium text-sm dark:text-gray-200 mb-2">Pump Horsepower Calculator:</h4>
+                              <PumpHorsepowerCalculator 
+                                initialFlowRate={calculatePumpFlowRate(
+                                  buildingData.floors.length * 3, 
+                                  buildingData.totalOccupantLoad
+                                )}
+                                initialPressure={calculatePumpPressure(buildingData.floors.length * 3)}
+                              />
+                            </div>
+                          )}
                           {specifications && (
                             <div>
-                              <h4 className="font-medium text-sm">Specifications:</h4>
+                              <h4 className="font-medium text-sm dark:text-gray-200">Specifications:</h4>
                               <div className="relative">
-                                <p className={`text-sm text-gray-700 ${!expandedText[`${requirement.id}-specs`] && specifications.length > 150 ? 'line-clamp-3' : ''}`}>
+                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-specs`] && specifications.length > 150 ? 'line-clamp-3' : ''}`}>
                                   {specifications}
                                 </p>
                                 {specifications.length > 150 && (
@@ -554,9 +585,9 @@ export default function RequirementsList({ requirements, buildingData }: Require
                           
                           {specificReqs?.type && (
                             <div>
-                              <h4 className="font-medium text-sm">Type:</h4>
+                              <h4 className="font-medium text-sm dark:text-gray-200">Type:</h4>
                               <div className="relative">
-                                <p className={`text-sm text-gray-700 ${!expandedText[`${requirement.id}-type`] && specificReqs.type.length > 150 ? 'line-clamp-3' : ''}`}>
+                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-type`] && specificReqs.type.length > 150 ? 'line-clamp-3' : ''}`}>
                                   {specificReqs.type}
                                 </p>
                                 {specificReqs.type.length > 150 && (
@@ -579,9 +610,9 @@ export default function RequirementsList({ requirements, buildingData }: Require
                           
                           {specificReqs?.distribution && (
                             <div>
-                              <h4 className="font-medium text-sm">Distribution:</h4>
+                              <h4 className="font-medium text-sm dark:text-gray-200">Distribution:</h4>
                               <div className="relative">
-                                <p className={`text-sm text-gray-700 ${!expandedText[`${requirement.id}-distribution`] && specificReqs.distribution.length > 150 ? 'line-clamp-3' : ''}`}>
+                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-distribution`] && specificReqs.distribution.length > 150 ? 'line-clamp-3' : ''}`}>
                                   {specificReqs.distribution}
                                 </p>
                                 {specificReqs.distribution.length > 150 && (

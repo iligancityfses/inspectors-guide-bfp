@@ -21,7 +21,7 @@ export const BuildingIcon = () => <FaBuilding className="text-blue-600" />;
 export const OccupancyIcon = () => <FaUsers className="text-blue-600" />;
 export const FloorIcon = () => <FaLayerGroup className="text-blue-600" />;
 export const RequirementsIcon = () => <FaClipboardList className="text-blue-600" />;
-export const DocumentsIcon = () => <FaFileAlt className="text-blue-600" />;
+export const DocumentsIcon = ({ className }: { className?: string }) => <FaFileAlt className={`text-blue-600 ${className || ''}`} />;
 export const HazardousIcon = () => <FaFlask className="text-red-600" />;
 
 // Icons for specific fire safety requirements

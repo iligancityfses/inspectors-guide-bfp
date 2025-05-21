@@ -67,14 +67,14 @@ export default function FloorManager({
   };
 
   return (
-    <div className="card mt-6">
-      <h2 className="text-xl font-semibold mb-4">Step 2: Add Building Floors</h2>
-      <p className="text-gray-600 mb-4">
+    <div className="card mt-6 dark:bg-gray-800 dark:border-gray-700">
+      <h2 className="text-xl font-semibold mb-4 dark:text-white">Step 2: Add Building Floors</h2>
+      <p className="text-gray-600 dark:text-gray-300 mb-4">
         Add floors to your building. For each floor, specify the floor number, area in square meters, and height in meters.
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
-          <label htmlFor="floor-length" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="floor-length" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Floor {currentFloor} Length (meters)
           </label>
           <input
@@ -82,14 +82,14 @@ export default function FloorManager({
             type="number"
             min="0"
             step="0.01"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             value={length}
             onChange={(e) => setLength(e.target.value)}
             placeholder="Enter length"
           />
         </div>
         <div>
-          <label htmlFor="floor-width" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="floor-width" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Floor {currentFloor} Width (meters)
           </label>
           <input
@@ -97,7 +97,7 @@ export default function FloorManager({
             type="number"
             min="0"
             step="0.01"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             value={width}
             onChange={(e) => setWidth(e.target.value)}
             placeholder="Enter width"
@@ -107,14 +107,14 @@ export default function FloorManager({
       
       <div className="flex flex-wrap items-center gap-4 mb-6">
         <button
-              className="px-4 py-2 rounded-md font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
+              className="px-4 py-2 rounded-md font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
           onClick={() => addFloor(1)}
         >
           Add Floor
         </button>
         
         <button 
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
           onClick={() => setShowBulkAdd(!showBulkAdd)}
         >
           {showBulkAdd ? 'Hide bulk add' : 'Add multiple floors with same area'}
@@ -122,13 +122,13 @@ export default function FloorManager({
       </div>
       
       {showBulkAdd && (
-        <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-200">
-          <h3 className="font-medium text-blue-800 mb-2">Add Multiple Floors</h3>
-          <p className="text-sm text-blue-700 mb-3">Use this to quickly add multiple floors with the same dimensions.</p>
+        <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg mb-6 border border-blue-200 dark:border-blue-800">
+          <h3 className="font-medium text-blue-800 dark:text-blue-300 mb-2">Add Multiple Floors</h3>
+          <p className="text-sm text-blue-700 dark:text-blue-400 mb-3">Use this to quickly add multiple floors with the same dimensions.</p>
           
           <div className="flex items-end gap-4">
             <div>
-              <label htmlFor="number-of-floors" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="number-of-floors" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Number of Floors to Add
               </label>
               <input
@@ -136,14 +136,14 @@ export default function FloorManager({
                 type="number"
                 min="1"
                 max="100"
-                className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 value={numberOfFloors}
                 onChange={(e) => setNumberOfFloors(e.target.value)}
               />
             </div>
             
             <button
-              className="btn bg-blue-600 hover:bg-blue-700 text-white"
+              className="btn bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
               onClick={() => {
                 const count = parseInt(numberOfFloors);
                 if (!isNaN(count) && count > 0 && count <= 100) {
@@ -161,46 +161,46 @@ export default function FloorManager({
       
       {floors.length > 0 && (
         <div>
-          <h3 className="font-medium mb-2">Added Floors</h3>
+          <h3 className="font-medium mb-2 dark:text-white">Added Floors</h3>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Floor
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Dimensions
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Area (m²)
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Occupant Load
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {floors.map((floor, index) => (
                   <tr key={floor.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {index + 1}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {floor.length} m × {floor.width} m
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {floor.area.toFixed(2)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
                       {floor.occupantLoad}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        className="text-red-600 hover:text-red-900"
+                        className="text-red-600 hover:text-red-900 dark:text-red-500 dark:hover:text-red-400"
                         onClick={() => removeFloor(floor.id)}
                       >
                         Remove
@@ -209,21 +209,21 @@ export default function FloorManager({
                   </tr>
                 ))}
               </tbody>
-              <tfoot className="bg-gray-50">
+              <tfoot className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Total
                   </td>
-                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     -
                   </td>
-                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {floors.reduce((sum, floor) => sum + floor.area, 0).toFixed(2)}
                   </td>
-                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {floors.reduce((sum, floor) => sum + floor.occupantLoad, 0)}
                   </td>
-                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <td className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     -
                   </td>
                 </tr>

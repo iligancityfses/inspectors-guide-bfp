@@ -1,4 +1,4 @@
-import { Floor } from '@/lib/calculations';
+import { Floor, calculatePumpPressure, calculatePumpFlowRate, calculatePumpHorsepower, PUMP_CONSTANTS } from '@/lib/calculations';
 
 export interface FireSafetyRequirement {
   id: string;
@@ -15,8 +15,8 @@ export interface FireSafetyRequirement {
   specificRequirements?: {
     quantity?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, floors?: Floor[] }) => string);
     type?: string;
-    specifications?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, buildingHeight: number, floors?: Floor[] }) => string);
-    distribution?: string;
+    specifications?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, buildingHeight: number, floors?: Floor[], occupancyType?: any }) => string);
+    distribution?: string | ((params: { occupantLoad: number, floorArea: number, stories: number, buildingHeight: number, floors?: Floor[], occupancyType?: any }) => string);
     installation?: string;
     maintenance?: string;
   };
@@ -28,7 +28,7 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
   {
     id: 'automatic-sprinkler-system',
     name: 'Automatic Sprinkler System',
-    description: 'An automatic sprinkler system shall be installed in buildings with a height of more than 15 meters (50 feet) or with an occupant load of more than 500 persons, or buildings with a total floor area exceeding 2,000 square meters. Single-story business establishments under 2,000 square meters with occupant load less than 500 are exempt.',
+    description: 'An automatic sprinkler system shall be installed in buildings with a height of more than 15 meters (50 feet) or with an occupant load of more than 500 persons, or buildings with a total floor area exceeding 2,000 square meters. Certain occupancies require sprinkler systems regardless of height or size, including healthcare facilities, high hazard occupancies, detention facilities, and mall complexes. Single-story business establishments under 2,000 square meters with occupant load less than 500 are exempt unless they fall into a special category.',
     applicableOccupancies: [
       'assembly', 'educational', 'healthcare-hospitals', 'healthcare-outpatient', 'healthcare-nursing-homes', 
       'institutional-restrained', 'institutional-general', 'mercantile', 'industrial-general', 'industrial-special',
@@ -44,27 +44,50 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
     },
     reference: 'RA 9514 IRR Rule 10.2.6.4',
     specificRequirements: {
-      specifications: ({ buildingHeight, stories, occupantLoad }) => {
-        let pumpPSI = 0;
-        // Calculate required pump pressure based on building height
-        // Basic formula: 0.433 PSI per foot of height + base pressure
-        const baseHeadPressure = 65; // PSI
-        const psiPerMeter = 1.42; // 0.433 PSI per foot = ~1.42 PSI per meter
+      specifications: ({ buildingHeight, stories, occupantLoad, occupancyType }) => {
         const actualHeight = buildingHeight || stories * 3;
-        
-        pumpPSI = Math.ceil(baseHeadPressure + actualHeight * psiPerMeter);
+        const pumpPSI = calculatePumpPressure(actualHeight);
         
         let sprinklerType = "Quick response";
         if (occupantLoad > 1000) {
           sprinklerType = "Standard response";
         }
         
-        return `Fire pump minimum pressure: ${pumpPSI} PSI. Water supply duration: minimum 30-60 minutes depending on hazard classification. Sprinkler heads: ${sprinklerType} type for light hazard; Standard response for ordinary and high hazard occupancies.`;
+        // Special requirements based on occupancy type
+        let specialRequirements = '';
+        const occupancyId = occupancyType?.id || '';
+        
+        if (occupancyId.includes('healthcare') || occupancyId.includes('hospital')) {
+          specialRequirements = ' Healthcare facilities require quick response sprinklers throughout. Water supply duration must be minimum 60 minutes.';
+        } else if (occupancyId.includes('high-hazard') || occupancyId.includes('storage-high')) {
+          specialRequirements = ' High hazard occupancies require higher density sprinkler systems with minimum water supply duration of 90 minutes.';
+        } else if (occupancyId.includes('mall')) {
+          specialRequirements = ' Mall complexes require sprinkler systems throughout, including in concealed spaces and service corridors.';
+        } else if (occupancyId.includes('detention') || occupancyId.includes('correctional') || occupancyId.includes('restrained')) {
+          specialRequirements = ' Detention facilities require institutional sprinklers with tamper-resistant features.';
+        }
+        
+        return `Fire pump minimum pressure: ${pumpPSI} PSI. Water supply duration: minimum 30-60 minutes depending on hazard classification. Sprinkler heads: ${sprinklerType} type for light hazard; Standard response for ordinary and high hazard occupancies.${specialRequirements}`;
       },
-      type: 'Wet pipe system with water under pressure at all times. Dry pipe systems allowed only in areas subject to freezing',
-      distribution: 'Light hazard: One sprinkler per 20.9 sq m (225 sq ft); Ordinary hazard: One sprinkler per 12.1 sq m (130 sq ft); High hazard: One sprinkler per 9.3 sq m (100 sq ft)',
-      installation: 'Sprinkler heads must be installed in accordance with NFPA 13 or equivalent standards. Maximum distance between sprinklers: 4.6 meters (15 feet) for light hazard; 4.0 meters (13 feet) for ordinary hazard; 3.7 meters (12 feet) for high hazard',
-      maintenance: 'Weekly visual inspection of control valves; Monthly inspection of water flow alarm devices; Quarterly inspection of alarm devices; Annual inspection and testing of all components; Five-year internal inspection of piping'
+      type: 'Wet pipe system with water under pressure at all times. Dry pipe systems allowed only in areas subject to freezing. Pre-action systems for data centers and electronic equipment areas. ESFR (Early Suppression Fast Response) sprinklers for high-piled storage areas.',
+      distribution: ({ floorArea, occupancyType }) => {
+        // Calculate approximate number of sprinklers based on floor area and hazard classification
+        const hazardClass = occupancyType?.hazardClassification || 'light';
+        let coverageArea = 20.9; // sq m per sprinkler for light hazard
+        
+        if (hazardClass === 'ordinary') {
+          coverageArea = 12.1; // sq m per sprinkler
+        } else if (hazardClass === 'high') {
+          coverageArea = 9.3; // sq m per sprinkler
+        }
+        
+        // Estimate number of sprinklers
+        const estimatedSprinklers = Math.ceil(floorArea / coverageArea);
+        
+        return `Light hazard: One sprinkler per 20.9 sq m (225 sq ft); Ordinary hazard: One sprinkler per 12.1 sq m (130 sq ft); High hazard: One sprinkler per 9.3 sq m (100 sq ft). Estimated number of sprinklers needed for this building: approximately ${estimatedSprinklers} heads based on total floor area.`;
+      },
+      installation: 'Sprinkler heads must be installed in accordance with NFPA 13. Maximum distance between sprinklers: 4.6 meters (15 feet) for light hazard; 4.0 meters (13 feet) for ordinary hazard; 3.7 meters (12 feet) for high hazard. Minimum pipe sizes: 25mm (1-inch) for branch lines serving up to 8 sprinklers; 32mm (1.25-inch) for up to 15 sprinklers; 40mm (1.5-inch) for up to 30 sprinklers; 50mm (2-inch) for up to 60 sprinklers.',
+      maintenance: 'Weekly visual inspection of control valves; Monthly inspection of water flow alarm devices; Quarterly inspection of alarm devices; Annual inspection and testing of all components; Five-year internal inspection of piping. Spare sprinkler cabinet must contain at least 6 spare sprinklers of each type used in the building, a sprinkler wrench, and NFPA 25 inspection requirements.'
     }
   },
   {
@@ -100,74 +123,28 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
         // Get the number of floors
         const floorCount = floors ? floors.length : 1;
         
-        if (!floors || floors.length === 0) {
-          // If no floor data, use the total floor area
-          const extinguishersRequired = Math.max(1, Math.ceil(floorArea / 278));
-          
-          // Additional extinguishers for high occupant load
-          let additionalExtinguishers = 0;
-          if (occupantLoad > 200) {
-            additionalExtinguishers = Math.floor(occupantLoad / 200);
-          }
-          
-          const total = extinguishersRequired + additionalExtinguishers;
-          return `Minimum ${total} fire extinguisher(s) required for the building.`;
+        // Calculate the number of extinguishers based on floor area
+        // For light hazard: 1 extinguisher per 280 sq m
+        // For ordinary hazard: 1 extinguisher per 140 sq m
+        // For high hazard: 1 extinguisher per 90 sq m
+        
+        let baseArea = 280; // sq m per extinguisher for light hazard
+        
+        // Adjust based on occupant load (as a proxy for hazard level)
+        if (occupantLoad > 500) {
+          baseArea = 140; // ordinary hazard
+        }
+        if (occupantLoad > 1000) {
+          baseArea = 90; // high hazard
         }
         
-        // Calculate extinguishers needed for each individual floor
-        let totalExtinguishers = 0;
+        // Calculate total number of extinguishers needed
+        const totalExtinguishers = Math.ceil(floorArea / baseArea);
         
-        // Calculate the requirements for each floor individually
-        const floorRequirements = floors.map(floor => {
-          // Basic calculation: 1 extinguisher per 278 sq meters (3,000 sq ft) or fraction thereof
-          const baseExtinguishers = Math.max(1, Math.ceil(floor.area / 278));
-          
-          // Additional extinguishers for high occupant load
-          let additionalExtinguishers = 0;
-          if (floor.occupantLoad > 200) {
-            additionalExtinguishers = Math.floor(floor.occupantLoad / 200);
-          }
-          
-          const floorTotal = baseExtinguishers + additionalExtinguishers;
-          totalExtinguishers += floorTotal;
-          
-          return floorTotal;
-        });
+        // Distribute across floors
+        const extinguishersPerFloor = Math.ceil(totalExtinguishers / floorCount);
         
-        // Find the most common requirement for display purposes
-        const counts: { [key: string]: number } = {};
-        floorRequirements.forEach(count => {
-          counts[count] = (counts[count] || 0) + 1;
-        });
-        
-        // Find the most frequent requirement
-        let mostCommonRequirement = floorRequirements[0];
-        let highestCount = 1;
-        
-        Object.keys(counts).forEach(count => {
-          if (counts[count] > highestCount) {
-            mostCommonRequirement = parseInt(count);
-            highestCount = counts[count];
-          }
-        });
-        
-        // If all floors have different requirements, show a range
-        const minReq = Math.min(...floorRequirements);
-        const maxReq = Math.max(...floorRequirements);
-        
-        let perFloorText = '';
-        if (minReq === maxReq) {
-          // All floors have the same requirement
-          perFloorText = `${minReq} fire extinguisher(s) required per floor`;
-        } else if (highestCount >= floorCount / 2) {
-          // Most floors have the same requirement
-          perFloorText = `${mostCommonRequirement} fire extinguisher(s) required for most floors (varies by floor area and occupant load)`;
-        } else {
-          // Requirements vary significantly
-          perFloorText = `${minReq}-${maxReq} fire extinguisher(s) required per floor (varies by floor area and occupant load)`;
-        }
-        
-        return `${perFloorText}. Total of ${totalExtinguishers} fire extinguisher(s) required for the entire building.`;
+        return `Minimum ${totalExtinguishers} fire extinguishers required for the building (approximately ${extinguishersPerFloor} per floor). Maximum travel distance to a fire extinguisher should not exceed 23 meters (75 feet).`;
       },
       type: 'Type ABC (multi-purpose dry chemical) for general areas; Type K for kitchens; Type BC for electrical equipment areas. For computer rooms and sensitive electronic equipment areas, clean agent extinguishers are recommended.',
       specifications: 'Minimum rating of 2-A:10-B:C for light hazard occupancies; 4-A:40-B:C for ordinary hazard; 6-A:80-B:C for high hazard. Each extinguisher must have a valid inspection tag and be fully charged.',
@@ -177,722 +154,534 @@ export const fireSafetyRequirements: FireSafetyRequirement[] = [
     }
   },
   {
-    id: 'fire-alarm-system',
+    id: 'fire-detection-alarm-system',
     name: 'Fire Detection and Alarm System',
-    description: 'An approved fire detection and alarm system shall be installed in buildings with an occupant load of 50 or more persons.',
+    description: 'A fire detection and alarm system shall be installed in buildings with an occupant load of more than 50 persons, or buildings with a total floor area exceeding 1,000 square meters.',
     applicableOccupancies: ['all'],
     thresholds: {
-      occupantLoad: 50
+      occupantLoad: 50,
+      floorArea: 1000
     },
-    reference: 'RA 9514 IRR Rule 10.2.6.5',
+    reference: 'RA 9514 IRR Rule 10.2.6.8',
     specificRequirements: {
-      quantity: ({ occupantLoad, stories, floors }) => {
-        const floorCount = floors ? floors.length : stories || 1;
-        let alarmsPerFloor = 2; // Minimum 2 alarm devices per floor
-        let manualStationsPerFloor = 1; // Minimum 1 manual pull station per floor
-        
-        // Calculate based on occupant load per floor
-        const avgOccupantLoadPerFloor = Math.ceil(occupantLoad / floorCount);
-        
-        if (avgOccupantLoadPerFloor > 100) {
-          // For larger floors, add more alarm devices
-          alarmsPerFloor = Math.ceil(avgOccupantLoadPerFloor / 100) + 1;
-          // For larger floors, add more manual stations
-          manualStationsPerFloor = Math.max(2, Math.ceil(avgOccupantLoadPerFloor / 200));
-        }
-        
-        return `Minimum ${alarmsPerFloor} alarm notification devices required per floor. Minimum ${manualStationsPerFloor} manual pull station(s) required per floor. Total of ${alarmsPerFloor * floorCount} alarm devices and ${manualStationsPerFloor * floorCount} manual pull stations required for the building.`;
-      },
-      specifications: ({ occupantLoad, stories, floors }) => {
-        const floorCount = floors ? floors.length : stories || 1;
-        let systemType = "Conventional fire alarm system";
-        if (occupantLoad > 300 || floorCount > 3) {
-          systemType = "Addressable fire alarm system";
-        }
-        
-        let additionalRequirements = "";
-        if (floorCount > 5 || occupantLoad > 1000) {
-          additionalRequirements = " System must include voice evacuation capabilities and emergency communication system.";
-        }
-        
-        return `${systemType} with manual pull stations, smoke detectors, heat detectors, and audio-visual alarm devices.${additionalRequirements} Each floor requires separate zone identification on the main control panel.`;
-      },
-      distribution: 'Manual pull stations at each exit and at each exit stairway on each floor. Maximum travel distance to a manual pull station shall not exceed 60 meters (200 feet). Alarm notification devices must be installed so that they are clearly audible and visible throughout all occupied areas with a sound level at least 15 dB above the average ambient sound level.',
-      installation: 'Control panel shall be located at the main entrance or in a constantly attended location. Smoke detectors in corridors spaced not more than 9 meters (30 feet) apart. Manual pull stations must be installed at a height of 1.1 to 1.37 meters (42 to 54 inches) above the floor.',
-      maintenance: 'Monthly testing of manual pull stations; Quarterly testing of alarm notification devices; Annual testing of all components; Complete system test and certification annually by a qualified technician.'
-    }
-  },
-
-  {
-    id: 'fire-exit-doors',
-    name: 'Means of Egress - Exit Doors',
-    description: 'Fire exit doors shall be provided for all occupancies with an occupant load of more than 10 persons. The number and width of exits shall be in accordance with the occupant load.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 10
-    },
-    reference: 'RA 9514 IRR Rule 10.2.5.2',
-    specificRequirements: {
-      quantity: ({ occupantLoad, floors }) => {
-        // Calculate required exits per floor based on occupant load per floor
-        const floorCount = floors ? floors.length : 1;
-        const avgOccupantLoadPerFloor = Math.ceil(occupantLoad / floorCount);
-        let requiredExitsPerFloor = 1;
-        
-        if (avgOccupantLoadPerFloor > 50 && avgOccupantLoadPerFloor <= 500) {
-          requiredExitsPerFloor = 2;
-        } else if (avgOccupantLoadPerFloor > 500 && avgOccupantLoadPerFloor <= 1000) {
-          requiredExitsPerFloor = 3;
-        } else if (avgOccupantLoadPerFloor > 1000) {
-          requiredExitsPerFloor = 4;
-        }
-        
-        // Calculate total exits for the building
-        let totalRequiredExits = 1;
-        if (occupantLoad > 50 && occupantLoad <= 500) {
-          totalRequiredExits = 2;
-        } else if (occupantLoad > 500 && occupantLoad <= 1000) {
-          totalRequiredExits = 3;
-        } else if (occupantLoad > 1000) {
-          totalRequiredExits = 4;
-        }
-        
-        return `Minimum ${requiredExitsPerFloor} exit(s) required per floor. Total of ${totalRequiredExits} exit(s) required for the building.`;
-      },
-      specifications: ({ occupantLoad, floors }) => {
-        // Calculate required exit width: 5 mm per person for stairs, 3.3 mm per person for level components
-        const floorCount = floors ? floors.length : 1;
-        const avgOccupantLoadPerFloor = Math.ceil(occupantLoad / floorCount);
-        const stairWidth = Math.ceil(avgOccupantLoadPerFloor * 5) / 1000;
-        const doorWidth = Math.ceil(avgOccupantLoadPerFloor * 3.3) / 1000;
-        
-        return `Minimum exit door width: ${Math.max(0.81, doorWidth).toFixed(2)} meters. Minimum stair width: ${Math.max(1.12, stairWidth).toFixed(2)} meters. Each floor requires separate exits with proper signage.`;
-      },
-      installation: 'Exit doors shall swing in the direction of exit travel when serving an occupant load of 50 or more. Exit doors shall be equipped with panic hardware when serving an occupant load of 100 or more. Maximum travel distance to an exit shall not exceed 60 meters (200 feet) for unsprinklered buildings or 90 meters (300 feet) for sprinklered buildings.',
-      maintenance: 'Monthly inspection of exit doors, hardware, and signs; Annual testing of panic hardware; Quarterly inspection of exit pathways to ensure they remain unobstructed.'
-    }
-  },
-  {
-    id: 'emergency-lighting',
-    name: 'Emergency Lighting',
-    description: 'Emergency lighting shall be provided in all means of egress for buildings with an occupant load of more than 50 persons.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 50
-    },
-    reference: 'RA 9514 IRR Rule 10.2.5.7',
-    specificRequirements: {
-      specifications: 'Emergency lighting shall provide initial illumination of not less than 10 lux (1 foot-candle) and not less than 1 lux (0.1 foot-candle) at any point measured along the path of egress at floor level',
-      type: 'Battery-powered emergency lights or generator-powered lighting system',
-      installation: 'Emergency lighting shall be arranged to provide initial illumination along the path of egress and shall be so arranged that the failure of any single lighting unit will not leave any area in darkness',
-      maintenance: 'Monthly functional testing for a minimum of 30 seconds; Annual testing for 90 minutes'
-    }
-  },
-  {
-    id: 'exit-signs',
-    name: 'Exit Signs and Directional Signs',
-    description: 'Illuminated exit signs and directional signs shall be provided in all means of egress for buildings with an occupant load of more than 50 persons.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 50
-    },
-    reference: 'RA 9514 IRR Rule 10.2.5.6',
-    specificRequirements: {
-      specifications: 'Exit signs shall be illuminated at all times. Signs shall use letters not less than 15 cm (6 inches) high with principal strokes not less than 1.9 cm (3/4 inch) wide',
-      type: 'Internally illuminated signs with letters in high contrast colors (typically green or red letters on black background)',
-      installation: 'Exit signs shall be placed so that no point in an exit access corridor is more than 30 meters (100 feet) from the nearest visible sign. Directional signs shall be provided where the direction of travel to reach the nearest exit is not apparent',
-      maintenance: 'Monthly inspection and testing of all exit signs; Annual testing of backup power supply'
-    }
-  },
-  {
-    id: 'standpipe-system',
-    name: 'Standpipe System',
-    description: 'A standpipe system shall be installed in buildings with a height of more than 15 meters.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      stories: 5, // Assuming average floor height of 3m, so 15m ÷ 3m = 5 floors
-      buildingHeight: 15
-    },
-    reference: 'RA 9514 IRR Rule 10.2.6.3',
-    specificRequirements: {
-      specifications: ({ buildingHeight, stories }) => {
-        let standpipeClass = "Class I";
-        let standpipeSize = "100 mm (4 inches)";
-        
-        if ((buildingHeight || stories * 3) > 30) {
-          standpipeClass = "Class I and Class III";
-          standpipeSize = "150 mm (6 inches)";
-        }
-        
-        return `${standpipeClass} standpipe system with ${standpipeSize} risers. Minimum flow rate of 500 GPM (1,893 LPM) for the first standpipe and 250 GPM (946 LPM) for each additional standpipe, up to a maximum of 1,250 GPM (4,731 LPM).`;
-      },
-      distribution: 'Hose connections at each floor level located in the exit stairway. Maximum distance between standpipes shall not exceed 61 meters (200 feet)',
-      installation: 'Fire department connections shall be located on the street side of the building and shall be not less than 0.45 meters (18 inches) or more than 1.2 meters (4 feet) above grade',
-      maintenance: 'Monthly visual inspection; Annual flow test; Five-year hydrostatic test at 200 PSI (13.8 bar) for 2 hours'
-    }
-  },
-  {
-    id: 'wet-standpipe-system',
-    name: 'Wet Standpipe System',
-    description: 'A wet standpipe system shall be installed in buildings with a height of more than 23 meters (75 feet).',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      stories: 8, // Assuming average floor height of 3m, so 23m ÷ 3m ≈ 8 floors
-      buildingHeight: 23
-    },
-    reference: 'RA 9514 IRR Rule 10.2.6.3.2',
-    specificRequirements: {
-      specifications: ({ buildingHeight, stories }) => {
-        const actualHeight = buildingHeight || stories * 3;
-        let pumpPressure = Math.ceil(65 + (actualHeight * 1.42)); // Base pressure + height pressure
-        
-        return `Wet standpipe system with automatic fire pump rated at minimum ${pumpPressure} PSI. System must maintain a minimum residual pressure of 65 PSI (4.5 bar) at the topmost hose connection when flowing 500 GPM (1,893 LPM).`;
-      },
-      type: 'Wet system with water under pressure at all times',
-      distribution: 'Hose connections at each floor level with 38 mm (1.5 inch) and 65 mm (2.5 inch) outlets. Maximum distance between standpipes shall not exceed 61 meters (200 feet)',
-      installation: 'Main riser diameter must be minimum 150 mm (6 inches). Fire department connections must be provided at street level. System must be interconnected with the building\'s fire pump and water supply',
-      maintenance: 'Weekly visual inspection of control valves; Monthly flow tests; Annual full flow test; Five-year hydrostatic test at 200 PSI (13.8 bar) for 2 hours'
-    }
-  },
-  {
-    id: 'fire-pump',
-    name: 'Fire Pump',
-    description: 'A fire pump shall be installed for buildings requiring wet standpipe systems or automatic sprinkler systems with a height of more than 23 meters.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      stories: 8, // Assuming average floor height of 3m, so 23m ÷ 3m ≈ 8 floors
-      buildingHeight: 23
-    },
-    reference: 'RA 9514 IRR Rule 10, Division 3',
-    specificRequirements: {
-      specifications: ({ buildingHeight, stories }) => {
-        const actualHeight = buildingHeight || stories * 3;
-        let pumpCapacity = 500; // Base capacity in GPM
-        let pumpPressure = Math.ceil(65 + (actualHeight * 1.42)); // Base pressure + height pressure
-        
-        if (actualHeight > 30) {
-          pumpCapacity = 750;
-        }
-        if (actualHeight > 60) {
-          pumpCapacity = 1000;
-        }
-        
-        return `Fire pump with minimum capacity of ${pumpCapacity} GPM (${pumpCapacity * 3.785} LPM) at ${pumpPressure} PSI. Electric fire pump with backup diesel generator or separate diesel fire pump required.`;
-      },
-      installation: 'Fire pump must be installed in a dedicated fire pump room with 2-hour fire resistance rating. Room must have direct access to the outside or to a fire-rated exit corridor',
-      maintenance: 'Weekly visual inspection and churn test; Monthly no-flow test; Annual flow test; Comprehensive maintenance every 3 years'
-    }
-  },
-  {
-    id: 'fire-detection-system',
-    name: 'Fire Detection System',
-    description: 'A fire detection system shall be installed in buildings with an occupant load of more than 100 persons to provide early warning of fire conditions.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 100
-    },
-    reference: 'RA 9514 IRR Rule 10, Division 5',
-    specificRequirements: {
-      specifications: 'System must include smoke detectors, heat detectors, and manual pull stations as appropriate for the occupancy. Detection devices must be connected to a control panel that initiates an alarm signal upon activation.',
-      type: 'Smoke detectors for early warning; Heat detectors for areas where smoke detectors may cause false alarms (kitchens, mechanical rooms); Manual pull stations at exits',
-      distribution: 'Smoke detectors must be installed in all corridors, common areas, and paths of egress. Maximum spacing between smoke detectors: 9 meters (30 feet). Heat detectors must be installed in kitchens, mechanical rooms, and other areas where smoke detectors are not suitable.',
-      installation: 'Detectors must be installed in accordance with NFPA 72 or equivalent standards. Control panel must be located in a constantly attended location or monitored remotely.',
-      maintenance: 'Monthly visual inspection; Quarterly testing of a sample of devices; Annual testing of all devices; Replacement of devices at end of service life (typically 10 years for smoke detectors)'
-    }
-  },
-  {
-    id: 'fire-safety-officer',
-    name: 'Fire Safety Officer',
-    description: 'A certified fire safety officer shall be designated for buildings with an occupant load of more than 500 persons.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 500
-    },
-    reference: 'RA 9514 IRR Rule 9',
-    specificRequirements: {
-      specifications: 'Must be certified by the Bureau of Fire Protection (BFP) and must have completed the prescribed Fire Safety Officer Training Course',
-      maintenance: 'Must maintain certification through continuing education and periodic recertification as required by BFP'
-    }
-  },
-  {
-    id: 'fire-safety-plan',
-    name: 'Fire Safety Plan',
-    description: 'A fire safety plan shall be prepared and maintained for buildings with an occupant load of more than 100 persons.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 100
-    },
-    reference: 'RA 9514 IRR Rule 9.0.4',
-    specificRequirements: {
-      specifications: 'Must include emergency procedures, evacuation plans, location of fire protection equipment, and contact information for emergency personnel',
-      installation: 'Must be posted in conspicuous locations throughout the building',
-      maintenance: 'Must be reviewed and updated annually or whenever there are changes to the building layout or occupancy'
-    }
-  },
-  {
-    id: 'fire-drill',
-    name: 'Fire Drill',
-    description: 'Fire drills shall be conducted at least twice a year for buildings with an occupant load of more than 50 persons.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 50
-    },
-    reference: 'RA 9514 IRR Rule 9.0.5',
-    specificRequirements: {
-      specifications: 'Must include complete evacuation of all occupants to a designated assembly area. Must test alarm systems and evacuation procedures',
-      maintenance: 'Records of all fire drills must be maintained, including date, time, participants, evacuation time, and any issues identified'
-    }
-  },
-  {
-    id: 'fire-hydrant',
-    name: 'Fire Hydrant',
-    description: 'A fire hydrant shall be installed within 100 meters of the building with a floor area of more than 2,000 square meters.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      floorArea: 2000
-    },
-    reference: 'RA 9514 IRR Rule 10, Division 3',
-    specificRequirements: {
-      quantity: ({ floorArea }) => {
-        let hydrantCount = 1;
-        if (floorArea > 5000) {
-          hydrantCount = 2;
-        } else if (floorArea > 10000) {
-          hydrantCount = 3;
-        }
-        return `Minimum ${hydrantCount} fire hydrant(s) required`;
-      },
-      specifications: 'Minimum flow rate of 1,000 GPM (3,785 LPM) for high-value districts; 500 GPM (1,893 LPM) for residential areas',
-      distribution: 'Maximum distance between hydrants shall not exceed 150 meters (500 feet) in high-value districts; 300 meters (1,000 feet) in residential areas',
-      installation: 'Hydrants shall be located not less than 12 meters (40 feet) from the building. Hydrants shall be installed so that the center of the 115 mm (4.5 inch) outlet is not less than 0.45 meters (18 inches) above grade',
-      maintenance: 'Semi-annual inspection and testing; Annual flow test; Five-year flow test and maintenance'
+      type: 'Addressable fire alarm system for buildings over 2,000 square meters or with more than 100 occupants; Conventional fire alarm system for smaller buildings.',
+      specifications: 'Control panel must be located at the main entrance or in a constantly attended location. Battery backup power for at least 24 hours of standby plus 5 minutes of alarm operation.',
+      distribution: 'Manual pull stations at each exit and at each floor landing of exit stairways. Maximum travel distance to a manual pull station should not exceed 60 meters (200 feet).',
+      installation: 'Smoke detectors in corridors, storage areas, and equipment rooms. Heat detectors in kitchens, mechanical rooms, and areas where smoke detectors would be subject to false alarms. Audible notification devices must provide a sound level of at least 15 dBA above ambient noise levels.',
+      maintenance: 'Monthly testing of manual pull stations; Quarterly testing of detectors; Annual testing of all components; Replacement of batteries every 2 years or as recommended by manufacturer.'
     }
   },
   {
     id: 'fire-department-connection',
     name: 'Fire Department Connection',
-    description: 'A fire department connection shall be installed for buildings with a height of more than 15 meters.',
+    description: 'A fire department connection (FDC) shall be provided for buildings with standpipe systems, sprinkler systems, or other fire protection systems that require supplemental water supply.',
     applicableOccupancies: ['all'],
-    thresholds: {
-      stories: 5, // Assuming average floor height of 3m, so 15m ÷ 3m = 5 floors
-      buildingHeight: 15
-    },
-    reference: 'RA 9514 IRR Rule 10.2.6.3.3',
+    thresholds: {},
+    reference: 'RA 9514 IRR Rule 10.2.6.9',
     specificRequirements: {
-      specifications: 'Minimum 100 mm (4-inch) connection with two 65 mm (2.5-inch) inlets with National Standard threads',
-      installation: 'Located on the street side of the building, not less than 0.45 meters (18 inches) and not more than 1.2 meters (4 feet) above grade. Must be identified with a sign reading "FIRE DEPARTMENT CONNECTION" in red letters at least 25 mm (1 inch) high',
-      maintenance: 'Quarterly inspection; Annual testing; Must be kept clear and accessible at all times'
+      type: 'Two-way Siamese connection for buildings up to 6 stories; Multiple connections for taller buildings.',
+      specifications: 'FDC must be compatible with local fire department equipment (65mm or 2.5-inch hose connections). Must be labeled to indicate the system it serves (e.g., "STANDPIPE", "SPRINKLER").',
+      distribution: 'Located on the street side of the building, within 30 meters (100 feet) of a fire hydrant, and between 0.5 and 1 meter (18-42 inches) above the ground level.',
+      installation: 'Must be visible and accessible from the street or nearest point of fire department vehicle access. Must be protected from damage by installing protective bollards if necessary.',
+      maintenance: 'Quarterly visual inspection; Annual testing for proper operation; Caps or plugs must be in place to protect threads; Area around FDC must be kept clear for at least 1 meter (3 feet) in all directions.'
     }
   },
   {
-    id: 'smoke-control-system',
-    name: 'Smoke Control System',
-    description: 'A smoke control system shall be installed in buildings with a height of more than 30 meters.',
+    id: 'standpipe-system',
+    name: 'Standpipe System',
+    description: 'A standpipe system shall be installed in buildings with a height of more than 15 meters (50 feet) or buildings with more than 4 stories.',
     applicableOccupancies: ['all'],
     thresholds: {
-      stories: 10, // Assuming average floor height of 3m, so 30m ÷ 3m = 10 floors
-      buildingHeight: 30
+      stories: 4,
+      buildingHeight: 15
     },
-    reference: 'RA 9514 IRR Rule 10.2.6.6',
+    reference: 'RA 9514 IRR Rule 10.2.6.10',
     specificRequirements: {
-      specifications: 'Smoke control system must be capable of maintaining tenable conditions during a fire event. System must be designed to prevent smoke migration from the fire floor to exit stairways and other floors',
-      type: 'Mechanical smoke exhaust system with dedicated fans and ductwork, or pressurization system for stairwells and exit corridors',
-      installation: 'System must be connected to emergency power supply. Control panel must be located at the fire command center or at the main entrance',
-      maintenance: 'Quarterly testing of smoke control equipment; Annual full functional testing; Dedicated maintenance program required'
+      type: 'Class I standpipe system for buildings over 15 meters; Class III standpipe system for high-rise buildings over 25 meters.',
+      specifications: 'Minimum flow rate of 500 GPM (1,900 LPM) for the first standpipe and 250 GPM (950 LPM) for each additional standpipe, up to a maximum of 1,250 GPM (4,750 LPM). Minimum pressure of 100 PSI (7 bar) at the topmost outlet.',
+      distribution: 'Standpipe outlets (hose connections) must be located in enclosed exit stairways, at each floor level. Maximum distance between standpipes should not exceed 60 meters (200 feet).',
+      installation: 'Standpipe risers must be at least 100mm (4 inches) in diameter. Hose connections must be 65mm (2.5 inches) in diameter with reducers to 38mm (1.5 inches) where required for occupant use.',
+      maintenance: 'Monthly visual inspection; Annual flow test; Five-year hydrostatic test at 200 PSI (13.8 bar) for 2 hours.'
     }
   },
   {
     id: 'fire-pump',
     name: 'Fire Pump',
-    description: 'A fire pump shall be installed for buildings with a height of more than 30 meters (100 feet) or with an occupant load of more than 1,000 persons.',
+    description: 'A fire pump shall be installed where the water supply pressure is insufficient to meet the pressure and flow requirements of the fire protection systems.',
     applicableOccupancies: ['all'],
     thresholds: {
-      occupantLoad: 1000,
-      stories: 10, // Assuming average floor height of 3m, so 30m ÷ 3m = 10 floors
-      buildingHeight: 30
+      stories: 7,
+      buildingHeight: 20
     },
-    reference: 'RA 9514 IRR Rule 10.2.6.3.4',
+    reference: 'RA 9514 IRR Rule 10.2.6.11',
     specificRequirements: {
-      specifications: ({ buildingHeight, stories }) => {
+      specifications: ({ buildingHeight, stories, floorArea, occupantLoad, occupancyType }) => {
         const actualHeight = buildingHeight || stories * 3;
-        let pumpCapacity = 500; // Base capacity in GPM
-        let pumpPressure = Math.ceil(65 + (actualHeight * 1.42)); // Base pressure + height pressure
+        const pumpPSI = calculatePumpPressure(actualHeight);
+        const flowRate = calculatePumpFlowRate(floorArea);
+        const horsepower = calculatePumpHorsepower(flowRate, pumpPSI);
         
-        if (actualHeight > 30) {
-          pumpCapacity = 750;
-        }
-        if (actualHeight > 60) {
-          pumpCapacity = 1000;
+        // Determine number of main fire pumps based on building size and occupancy
+        let mainPumps = 1;
+        if (floorArea > 10000 || actualHeight > 30 || occupantLoad > 1000) {
+          mainPumps = 2; // Redundancy for larger buildings
         }
         
-        return `Fire pump with minimum capacity of ${pumpCapacity} GPM (${pumpCapacity * 3.785} LPM) at ${pumpPressure} PSI. Electric fire pump with backup diesel generator or separate diesel fire pump required.`;
+        // Determine if a backup diesel pump is needed
+        const needsBackupDiesel = floorArea > 5000 || actualHeight > 23 || occupantLoad > 500 || 
+          (occupancyType?.id && (occupancyType.id.includes('healthcare') || 
+                               occupancyType.id.includes('high-hazard') || 
+                               occupancyType.id.includes('assembly')));
+        
+        // Calculate jockey pump specifications
+        const jockeyPumpPSI = pumpPSI + 10; // Jockey pump maintains higher pressure
+        const jockeyPumpGPM = Math.max(10, Math.ceil(flowRate * 0.01)); // Typically 1% of main pump capacity
+        const jockeyHP = Math.ceil(jockeyPumpGPM * jockeyPumpPSI * 0.0017); // Approximate HP calculation
+        
+        // Calculate number of sprinkler heads that can be supported
+        const hazardClass = occupancyType?.hazardClassification || 'light';
+        let sprinklerDensity = 0.1; // gpm/sq ft for light hazard
+        if (hazardClass === 'ordinary') {
+          sprinklerDensity = 0.15;
+        } else if (hazardClass === 'high') {
+          sprinklerDensity = 0.25;
+        }
+        
+        // Assuming 15 gpm per sprinkler for light hazard, more for higher hazards
+        let sprinklerFlowRate = 15; // gpm per sprinkler for light hazard
+        if (hazardClass === 'ordinary') {
+          sprinklerFlowRate = 22;
+        } else if (hazardClass === 'high') {
+          sprinklerFlowRate = 30;
+        }
+        
+        // Calculate maximum number of sprinklers that can operate simultaneously
+        const maxSimultaneousSprinklers = Math.floor(flowRate / sprinklerFlowRate);
+        
+        // Pump configuration description
+        let pumpConfig = `${mainPumps} main fire pump(s) with a combined capacity of ${flowRate} GPM at ${pumpPSI} PSI`;
+        if (needsBackupDiesel) {
+          pumpConfig += ` and 1 backup diesel-driven fire pump with equal capacity`;
+        }
+        pumpConfig += `. 1 jockey pump rated at ${jockeyPumpGPM} GPM at ${jockeyPumpPSI} PSI (approximately ${jockeyHP} HP).`;
+        
+        return `Pump System Requirements: ${pumpConfig} Main pump(s) estimated horsepower: ${horsepower} HP per pump. System can support approximately ${maxSimultaneousSprinklers} sprinklers operating simultaneously at a density of ${sprinklerDensity} gpm/sq ft. All pumps must be listed for fire service and installed in accordance with NFPA 20.`;
       },
-      type: 'Electric motor-driven fire pump with backup power source or diesel engine-driven fire pump',
-      installation: 'Pump must be installed in a dedicated fire pump room with 2-hour fire resistance rating. Room must be provided with adequate ventilation and drainage',
-      maintenance: 'Weekly visual inspection; Monthly no-flow test; Annual flow test; Comprehensive maintenance program required'
+      type: ({ floorArea, occupantLoad, occupancyType }) => {
+        const isHighRisk = occupancyType?.hazardClassification === 'high' || 
+                         (occupancyType?.id && (occupancyType.id.includes('healthcare') || 
+                                                occupancyType.id.includes('high-hazard')));
+        const isLargeBuilding = floorArea > 10000 || occupantLoad > 1000;
+        
+        if (isHighRisk || isLargeBuilding) {
+          return 'Primary: Electric-driven horizontal split-case fire pump. Backup: Diesel-driven horizontal split-case fire pump with minimum 8-hour fuel supply. Jockey Pump: Electric-driven multistage pump for pressure maintenance.';
+        } else {
+          return 'Primary: Electric-driven fire pump (horizontal split-case or vertical inline based on available space). Optional Backup: Diesel-driven fire pump where reliable electrical power is not available. Jockey Pump: Electric-driven multistage or regenerative turbine pump.';
+        }
+      },
+      distribution: ({ floorArea, stories, buildingHeight }) => {
+        const actualHeight = buildingHeight || stories * 3;
+        let pumpRoomRequirements = 'Located in a dedicated fire pump room with a minimum 2-hour fire-resistance rating. Room must have direct access to the outside or to a protected means of egress.';
+        
+        if (actualHeight > 30 || floorArea > 10000) {
+          pumpRoomRequirements += ' For high-rise buildings, consider a secondary fire pump at intermediate levels if building height exceeds 120 meters.';
+        }
+        
+        if (floorArea > 5000) {
+          pumpRoomRequirements += ' Fire pump room should be at least 20 square meters to accommodate all equipment with adequate clearance for maintenance.';
+        } else {
+          pumpRoomRequirements += ' Fire pump room should be at least 15 square meters with adequate clearance for maintenance.';
+        }
+        
+        return pumpRoomRequirements;
+      },
+      installation: 'Must be installed in accordance with NFPA 20. Suction pipe must be at least one size larger than the pump intake. Controller must be listed for fire pump service. Jockey pump must be installed with a separate controller and set to maintain system pressure approximately 10 PSI above the main fire pump start pressure. All pumps must have individual pressure gauges on suction and discharge sides. Provide a flow meter test header for testing pump performance without discharging water.',
+      maintenance: 'Weekly visual inspection and churn test; Monthly testing of jockey pump operation; Monthly testing of fire pump under no-flow conditions; Annual testing of fire pump under flow conditions; Diesel engine (if applicable): Weekly testing for 30 minutes; Monthly inspection of fuel, oil, and cooling systems; Annual full-flow testing; Maintain detailed records of all tests and maintenance.'
     }
   },
   {
-    id: 'fire-command-center',
-    name: 'Fire Command Center',
-    description: 'A fire command center shall be provided for buildings with a height of more than 23 meters (75 feet).',
+    id: 'fire-hydrant',
+    name: 'Fire Hydrant',
+    description: 'Fire hydrants shall be installed on the premises for buildings with a total floor area exceeding 2,000 square meters or where the nearest public hydrant is more than 100 meters from the main entrance.',
     applicableOccupancies: ['all'],
     thresholds: {
-      stories: 8, // Assuming average floor height of 3m, so 23m ÷ 3m ≈ 8 floors
-      buildingHeight: 23
+      floorArea: 2000
     },
-    reference: 'RA 9514 IRR Rule 10.2.5.8',
+    reference: 'RA 9514 IRR Rule 10.2.6.12',
     specificRequirements: {
-      specifications: 'Minimum area of 9.3 square meters (100 square feet) with minimum dimension of 2.4 meters (8 feet)',
-      installation: 'Located on the ground floor with direct access to the exterior. Room must have 2-hour fire resistance rating',
-      type: 'Must contain fire alarm control panel, emergency voice/alarm communication system, fire department communication system, fire pump status indicators, elevator status and controls, smoke control panel, and emergency and standby power status indicators'
+      type: 'Wet barrel hydrants in areas not subject to freezing; Dry barrel hydrants in areas subject to freezing.',
+      specifications: 'Minimum flow rate of 1,000 GPM (3,800 LPM) for high-hazard occupancies; 750 GPM (2,850 LPM) for ordinary hazard; 500 GPM (1,900 LPM) for light hazard. Minimum pressure of 20 PSI (1.4 bar) at the hydrant outlet.',
+      distribution: 'Maximum distance between hydrants should not exceed 150 meters (500 feet) for high-hazard occupancies; 180 meters (600 feet) for ordinary hazard; 210 meters (700 feet) for light hazard.',
+      installation: 'Hydrants must be located at least 12 meters (40 feet) from the building being protected. Must be accessible to fire department apparatus and protected from damage by installing protective bollards if necessary.',
+      maintenance: 'Semi-annual visual inspection; Annual flow test; Lubrication of operating nuts and caps as needed; Hydrants must be painted in accordance with local requirements (typically red or yellow).'
     }
   },
   {
-    id: 'fire-resistance-rating',
-    name: 'Fire Resistance Rating',
-    description: 'Building elements shall have a fire resistance rating in accordance with the occupancy type and building height.',
+    id: 'fire-exit-doors',
+    name: 'Fire Exit Doors',
+    description: 'Fire exit doors shall be provided for all buildings to allow for safe evacuation in case of fire or other emergency.',
     applicableOccupancies: ['all'],
     thresholds: {},
-    reference: 'RA 9514 IRR Rule 7',
+    reference: 'RA 9514 IRR Rule 10.2.5.1',
     specificRequirements: {
-      specifications: ({ stories }) => {
-        let structuralFrameRating = '1 hour';
-        let bearingWallsRating = '1 hour';
-        let floorConstructionRating = '1 hour';
-        let roofConstructionRating = '1 hour';
-        let exteriorWallsRating = '1 hour';
-        
-        if (stories >= 5) {
-          structuralFrameRating = '2 hours';
-          bearingWallsRating = '2 hours';
-          floorConstructionRating = '2 hours';
+      quantity: ({ occupantLoad }) => {
+        let numExits = 2;
+        if (occupantLoad > 500 && occupantLoad <= 1000) {
+          numExits = 3;
+        } else if (occupantLoad > 1000) {
+          numExits = 4;
         }
-        
-        if (stories >= 10) {
-          structuralFrameRating = '3 hours';
-          bearingWallsRating = '3 hours';
-          floorConstructionRating = '2 hours';
-          exteriorWallsRating = '2 hours';
-        }
-        
-        return `Structural frame: ${structuralFrameRating}. Bearing walls: ${bearingWallsRating}. Floor construction: ${floorConstructionRating}. Roof construction: ${roofConstructionRating}. Exterior walls: ${exteriorWallsRating}.`;
+        return `Minimum ${numExits} exits required for this occupant load.`;
       },
-      type: 'Fire resistance ratings must be achieved through approved materials and assemblies tested according to recognized standards',
-      installation: 'All penetrations through fire-rated assemblies must be properly sealed with approved firestopping materials'
-    }
-  },
-  {
-    id: 'emergency-power-supply',
-    name: 'Emergency Power Supply',
-    description: 'An emergency power supply shall be provided for buildings with a height of more than 23 meters (75 feet) or with an occupant load of more than 500 persons.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      stories: 8, // Assuming average floor height of 3m, so 23m ÷ 3m ≈ 8 floors
-      buildingHeight: 23,
-      occupantLoad: 500
-    },
-    reference: 'RA 9514 IRR Rule 10',
-    specificRequirements: {
-      specifications: 'Emergency power must be capable of providing power for a minimum duration of 2 hours',
-      type: 'Diesel generator set or other approved emergency power supply system',
-      installation: 'Emergency power supply must be installed in a dedicated room with 2-hour fire resistance rating',
-      maintenance: 'Weekly testing under no-load conditions; Monthly testing under load conditions; Annual full load test for minimum 2 hours'
+      type: 'Swinging doors with panic hardware for assembly, educational, and high-hazard occupancies with an occupant load of 50 or more. Standard swinging doors with lever handles for other occupancies.',
+      specifications: 'Minimum width of 0.9 meters (36 inches) for new buildings; 0.8 meters (32 inches) for existing buildings. Minimum height of 2.0 meters (80 inches). Must be able to be opened with a single motion without special knowledge or keys.',
+      distribution: 'Exit doors must be arranged so that the travel distance to an exit does not exceed 60 meters (200 feet) in unsprinklered buildings; 90 meters (300 feet) in sprinklered buildings.',
+      installation: 'Must swing in the direction of egress travel when serving an occupant load of 50 or more. Must be equipped with self-closing devices and positive latching hardware. Must be fire-rated in accordance with the required fire-resistance rating of the exit enclosure.',
+      maintenance: 'Monthly inspection of hardware and operation; Quarterly testing of panic hardware; Annual testing of self-closing devices; Immediate repair or replacement of damaged components.'
     }
   },
   {
     id: 'means-of-egress',
     name: 'Means of Egress',
-    description: 'Means of egress shall be provided in accordance with the occupant load and travel distance requirements.',
+    description: 'Means of egress shall be provided for all buildings to allow for safe evacuation in case of fire or other emergency.',
     applicableOccupancies: ['all'],
     thresholds: {},
-    reference: 'RA 9514 IRR Rule 10, Division 2',
+    reference: 'RA 9514 IRR Rule 10.2.5.2',
     specificRequirements: {
-      specifications: ({ occupantLoad, stories }) => {
-        let maxTravelDistance = '60 meters (200 feet) for unsprinklered buildings; 90 meters (300 feet) for sprinklered buildings';
-        let exitWidth = Math.max(0.81, Math.ceil(occupantLoad * 3.3) / 1000).toFixed(2);
-        let stairWidth = Math.max(1.12, Math.ceil(occupantLoad * 5) / 1000).toFixed(2);
-        
-        return `Maximum travel distance: ${maxTravelDistance}. Minimum exit door width: ${exitWidth} meters. Minimum stair width: ${stairWidth} meters.`;
-      },
-      type: 'Exits must be clearly marked with illuminated exit signs. Exit access, exit, and exit discharge must be continuously maintained free of obstructions',
-      installation: 'Exit doors must swing in the direction of exit travel when serving an occupant load of 50 or more. Dead-end corridors must not exceed 6 meters (20 feet) in length',
-      maintenance: 'Monthly inspection of exit pathways, doors, and signs; Annual testing of emergency lighting and exit signs'
-    }
-  },
-  {
-    id: 'fire-barrier',
-    name: 'Fire Barriers and Partitions',
-    description: 'Fire barriers and partitions shall be provided to separate different occupancies and hazardous areas.',
-    applicableOccupancies: ['all'],
-    thresholds: {},
-    reference: 'RA 9514 IRR Rule 7',
-    specificRequirements: {
-      specifications: 'Fire barriers separating different occupancies must have a minimum 2-hour fire resistance rating. Fire barriers enclosing exit stairways must have a minimum 2-hour fire resistance rating',
-      type: 'Fire barriers must extend from the floor to the underside of the floor or roof above, or to the underside of the fire-rated floor/ceiling or roof/ceiling assembly',
-      installation: 'All penetrations through fire barriers must be protected with approved firestopping materials. Doors in fire barriers must be fire-rated and self-closing',
-      maintenance: 'Annual inspection of fire barriers, doors, and penetration seals'
-    }
-  },
-  {
-    id: 'fire-safety-maintenance-report',
-    name: 'Fire Safety Maintenance Report (FSMR)',
-    description: 'A Fire Safety Maintenance Report (FSMR) shall be prepared and maintained by the building owner or administrator, documenting all fire safety features, equipment, and procedures.',
-    applicableOccupancies: ['all'],
-    thresholds: {},
-    reference: 'RA 9514 IRR Rule 10.1.4',
-    specificRequirements: {
-      specifications: 'The FSMR shall include an inventory of all fire protection equipment and systems, maintenance schedules, testing records, and inspection reports.',
-      type: 'Written document with electronic backup recommended',
-      distribution: 'Copies shall be maintained on-site and be readily available for inspection by fire safety officials',
-      installation: 'Not applicable',
-      maintenance: 'Monthly updates for routine maintenance; Immediate updates for any changes to fire protection systems or equipment; Annual comprehensive review and update'
-    }
-  },
-  {
-    id: 'fire-safety-inspection-certificate',
-    name: 'Fire Safety Inspection Certificate (FSIC)',
-    description: 'A Fire Safety Inspection Certificate (FSIC) shall be obtained from the Bureau of Fire Protection prior to occupancy and shall be renewed annually.',
-    applicableOccupancies: ['all'],
-    thresholds: {},
-    reference: 'RA 9514 IRR Rule 9',
-    specificRequirements: {
-      specifications: 'The FSIC certifies that the building complies with all applicable fire safety requirements and standards.',
-      type: 'Official document issued by the Bureau of Fire Protection',
-      distribution: 'Original copy shall be displayed prominently at the main entrance or lobby of the building',
-      installation: 'Not applicable',
-      maintenance: 'Annual renewal required after inspection by the Bureau of Fire Protection'
-    }
-  },
-  {
-    id: 'smoke-control-system',
-    name: 'Smoke Control System',
-    description: 'A smoke control system shall be installed in buildings with an atrium or in high-rise buildings with a height of more than 23 meters (75 feet).',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      stories: 8, // Assuming average floor height of 3m, so 23m ÷ 3m ≈ 8 floors
-      buildingHeight: 23
-    },
-    reference: 'RA 9514 IRR Rule 10.2.6.8',
-    specificRequirements: {
-      specifications: ({ buildingHeight, stories }) => {
-        const actualHeight = buildingHeight || stories * 3;
-        let systemType = "Mechanical smoke control system";
-        
-        if (actualHeight > 30) {
-          systemType = "Pressurized stairwells and mechanical smoke control system";
+      quantity: ({ occupantLoad, floors }) => {
+        let numExits = 2;
+        if (occupantLoad > 500 && occupantLoad <= 1000) {
+          numExits = 3;
+        } else if (occupantLoad > 1000) {
+          numExits = 4;
         }
         
-        return `${systemType} with smoke detectors, dampers, and fans. System must maintain a pressure differential of at least 0.05 inches of water (12.5 Pa) across smoke barriers.`;
+        const floorCount = floors ? floors.length : 1;
+        let stairwayRequirement = '';
+        
+        if (floorCount > 1) {
+          stairwayRequirement = ` Each floor above the first floor requires at least ${numExits} exit stairways.`;
+        }
+        
+        return `Minimum ${numExits} exits required for this occupant load.${stairwayRequirement}`;
       },
-      type: 'Mechanical exhaust system, pressurization system, or combination system',
-      installation: 'System must be designed in accordance with NFPA 92 or equivalent standards. Control panel shall be located at the fire command center',
-      maintenance: 'Quarterly testing of all components; Annual full system test; Comprehensive maintenance every 3 years'
+      type: 'Protected exit stairways for buildings over 2 stories; Horizontal exits where applicable; Exterior exit stairs or ramps where applicable.',
+      specifications: 'Minimum width of exit corridors: 1.1 meters (44 inches) for occupant loads of 50 or more; 0.9 meters (36 inches) for occupant loads less than 50. Minimum width of exit stairways: 1.1 meters (44 inches) for occupant loads of 50 or more; 0.9 meters (36 inches) for occupant loads less than 50.',
+      distribution: 'Exits must be arranged so that the travel distance to an exit does not exceed 60 meters (200 feet) in unsprinklered buildings; 90 meters (300 feet) in sprinklered buildings. When more than one exit is required, they must be arranged so that if one exit is blocked, the others will be available.',
+      installation: 'Exit corridors and stairways must be enclosed with fire-resistance-rated construction (minimum 1-hour for buildings up to 3 stories; 2-hour for buildings 4 stories or more). Exit signs must be provided at every exit and along the path of egress travel where the exit or path is not immediately visible.',
+      maintenance: 'Monthly inspection of exit signs and emergency lighting; Quarterly testing of emergency lighting; Annual inspection of fire-resistance-rated construction; Immediate repair of damaged components.'
+    }
+  },
+  {
+    id: 'emergency-lighting',
+    name: 'Emergency Lighting',
+    description: 'Emergency lighting shall be provided for all buildings to illuminate the means of egress in case of power failure.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      occupantLoad: 50
+    },
+    reference: 'RA 9514 IRR Rule 10.2.5.3',
+    specificRequirements: {
+      type: 'Battery-powered emergency lights; Generator-powered lighting systems for high-rise buildings or critical facilities.',
+      specifications: 'Minimum illumination of 10 lux (1 foot-candle) at the floor level along the path of egress. Battery backup must provide at least 90 minutes of emergency operation.',
+      distribution: 'Required in exit corridors, stairways, ramps, escalators, and other portions of the means of egress. Also required in rooms or spaces that can be occupied by more than 50 persons.',
+      installation: 'Must be installed at a height of at least 2.1 meters (7 feet) above the floor. Must be spaced so that the failure of any single unit will not leave any area in darkness.',
+      maintenance: 'Monthly testing for 30 seconds; Annual testing for 90 minutes; Immediate replacement of defective units; Replacement of batteries every 3-5 years or as recommended by manufacturer.'
+    }
+  },
+  {
+    id: 'fire-compartmentation',
+    name: 'Fire Compartmentation and Fire Barriers',
+    description: 'Fire compartmentation shall be provided to subdivide buildings into smaller fire areas to limit the spread of fire, smoke, and heat. Fire barriers, fire walls, fire partitions, and fire-rated floor/ceiling assemblies shall be used to create fire compartments.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      stories: 2,
+      floorArea: 1000
+    },
+    reference: 'RA 9514 IRR Rule 10.2.3',
+    specificRequirements: {
+      specifications: ({ stories, floorArea, occupancyType }) => {
+        let fireRating = '1-hour';
+        let specialRequirements = '';
+        
+        // Determine fire rating based on building height and occupancy
+        if (stories >= 4) {
+          fireRating = '2-hour';
+        }
+        if (stories >= 7) {
+          fireRating = '3-hour';
+        }
+        
+        // Special requirements based on occupancy type
+        const occupancyId = occupancyType?.id || '';
+        
+        if (occupancyId.includes('healthcare') || occupancyId.includes('hospital')) {
+          fireRating = '2-hour';
+          specialRequirements = ' Healthcare facilities require smoke compartments with maximum area of 2,000 square meters. Each smoke compartment must have at least two means of egress.';
+        } else if (occupancyId.includes('high-hazard') || occupancyId.includes('storage-high')) {
+          fireRating = '3-hour';
+          specialRequirements = ' High hazard occupancies require 3-hour fire barriers between adjacent occupancies. Maximum area of a high hazard compartment is 1,000 square meters.';
+        } else if (occupancyId.includes('assembly')) {
+          specialRequirements = ' Assembly occupancies require 2-hour fire barriers when occupant load exceeds 300 persons.';
+        } else if (occupancyId.includes('residential')) {
+          specialRequirements = ' Residential occupancies require 1-hour fire partitions between dwelling units and 2-hour fire barriers between floors.';
+        }
+        
+        return `Fire barriers with minimum ${fireRating} fire-resistance rating required between different occupancies and at vertical openings. Floor/ceiling assemblies must have the same fire-resistance rating as the walls of the fire compartment.${specialRequirements}`;
+      },
+      type: 'Fire walls, fire barriers, fire partitions, and fire-rated floor/ceiling assemblies. Fire walls must extend from foundation to roof and must be structurally independent or designed to allow collapse on either side without collapse of the wall.',
+      distribution: ({ floorArea, stories }) => {
+        let maxCompartmentSize = 2000; // sq m for most occupancies
+        let floorRequirement = '';
+        
+        if (stories > 3) {
+          floorRequirement = ' Each floor must be a separate fire compartment with protected vertical openings.';
+        }
+        
+        return `Maximum fire compartment size: ${maxCompartmentSize} square meters for most occupancies (1,000 square meters for high hazard occupancies). Fire barriers must be continuous from exterior wall to exterior wall and from the top of the floor/ceiling assembly below to the underside of the floor or roof above.${floorRequirement}`;
+      },
+      installation: 'Fire barriers must be continuous and properly sealed at all penetrations. Penetrations must be protected with approved firestop systems tested in accordance with ASTM E814 or UL 1479. Joints must be protected with approved joint systems. Fire doors in fire barriers must have the same fire-resistance rating as the barrier (3-hour walls require 3-hour doors, 2-hour walls require 1.5-hour doors, 1-hour walls require 0.75-hour doors).',
+      maintenance: 'Annual visual inspection of all fire barriers, fire doors, and penetration firestop systems. Immediate repair of any damaged fire barriers or penetrations. Fire doors must be inspected and tested annually in accordance with NFPA 80.'
+    }
+  },
+  {
+    id: 'smoke-control-systems',
+    name: 'Smoke Control Systems',
+    description: 'Smoke control systems shall be installed to manage and control the movement of smoke during a fire. These systems are designed to maintain tenable conditions for building evacuation and to assist firefighting operations.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      stories: 6,
+      buildingHeight: 18,
+      floorArea: 2500
+    },
+    reference: 'RA 9514 IRR Rule 10.2.6.13',
+    specificRequirements: {
+      specifications: ({ stories, buildingHeight, floorArea, occupancyType }) => {
+        const actualHeight = buildingHeight || stories * 3;
+        let systemType = 'Passive smoke control';
+        let specialRequirements = '';
+        
+        // Determine system type based on building height and occupancy
+        if (actualHeight > 30 || floorArea > 5000) {
+          systemType = 'Active mechanical smoke control';
+        }
+        
+        // Special requirements based on occupancy type
+        const occupancyId = occupancyType?.id || '';
+        
+        if (occupancyId.includes('healthcare') || occupancyId.includes('hospital')) {
+          systemType = 'Active mechanical smoke control';
+          specialRequirements = ' Healthcare facilities require smoke compartments with mechanical smoke control. Each smoke zone must have independent controls.';
+        } else if (occupancyId.includes('assembly')) {
+          specialRequirements = ' Assembly occupancies with occupant loads exceeding 1,000 persons require mechanical smoke exhaust systems.';
+        } else if (occupancyId.includes('mall') || occupancyId.includes('mercantile')) {
+          specialRequirements = ' Mall and large mercantile occupancies require mechanical smoke exhaust systems in sales areas exceeding 2,000 square meters.';
+        } else if (occupancyId.includes('atrium') || floorArea > 10000) {
+          systemType = 'Engineered smoke control';
+          specialRequirements = ' Buildings with atriums or large open spaces require engineered smoke control systems designed specifically for the space configuration.';
+        }
+        
+        return `${systemType} system required. System must be designed to maintain the smoke layer interface at least 1.8 meters (6 feet) above the highest walking surface for a minimum of 20 minutes.${specialRequirements}`;
+      },
+      type: 'Stairwell pressurization systems for exit stairs; Zoned smoke control for floors; Dedicated smoke exhaust systems for atriums and large open spaces. For smaller buildings: Passive smoke barriers with smoke dampers; Automatic smoke vents for stairwells; Natural or mechanical smoke exhaust systems as required by occupancy.',
+      distribution: ({ stories, floorArea }) => {
+        let zoneRequirement = 'Each floor should be a separate smoke zone.';
+        let exhaustRequirement = '';
+        
+        if (floorArea > 5000) {
+          zoneRequirement = 'Each floor should be divided into multiple smoke zones not exceeding 2,000 square meters each.';
+        }
+        
+        if (stories > 10) {
+          exhaustRequirement = ' Mechanical smoke exhaust capacity should be at least 6 air changes per hour or 0.1 square meters per second per 100 square meters of floor area, whichever is greater.';
+        } else {
+          exhaustRequirement = ' Mechanical smoke exhaust capacity should be at least 4 air changes per hour or 0.06 square meters per second per 100 square meters of floor area, whichever is greater.';
+        }
+        
+        return `${zoneRequirement}${exhaustRequirement} Smoke dampers must be provided at all duct penetrations of smoke barriers.`;
+      },
+      installation: 'Smoke control systems must be installed in accordance with NFPA 92. All equipment must be listed for its intended use. Smoke detectors for system activation must be installed in accordance with NFPA 72. Control systems must be designed to provide proper sequencing of operations. Emergency power must be provided for all active smoke control components.',
+      maintenance: 'Weekly visual inspection of control panels; Monthly testing of dedicated smoke control panel functions; Quarterly testing of damper operation; Annual full functional testing of the entire smoke control system; Dedicated records of all tests and maintenance activities.'
+    }
+  },
+  {
+    id: 'emergency-power-systems',
+    name: 'Emergency Power Systems',
+    description: 'Emergency power systems shall be installed to provide backup power to critical life safety systems during power outages or emergencies.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      stories: 4,
+      buildingHeight: 12,
+      occupantLoad: 300
+    },
+    reference: 'RA 9514 IRR Rule 10.2.6.14',
+    specificRequirements: {
+      specifications: ({ stories, buildingHeight, occupantLoad, occupancyType }) => {
+        const actualHeight = buildingHeight || stories * 3;
+        let duration = '2 hours';
+        let specialRequirements = '';
+        
+        // Determine duration based on building height and occupancy
+        if (actualHeight > 23 || occupantLoad > 1000) {
+          duration = '4 hours';
+        }
+        
+        // Special requirements based on occupancy type
+        const occupancyId = occupancyType?.id || '';
+        
+        if (occupancyId.includes('healthcare') || occupancyId.includes('hospital')) {
+          duration = '8 hours';
+          specialRequirements = ' Healthcare facilities require emergency power for all life safety systems, critical care areas, and essential medical equipment.';
+        } else if (occupancyId.includes('high-hazard')) {
+          specialRequirements = ' High hazard occupancies require emergency power for ventilation systems, alarm systems, and critical process equipment.';
+        } else if (occupancyId.includes('assembly')) {
+          specialRequirements = ' Assembly occupancies with occupant loads exceeding 1,000 persons require emergency power for all egress lighting and emergency voice/alarm communication systems.';
+        }
+        
+        return `Emergency power system with minimum ${duration} operation capacity required. System must automatically activate within 10 seconds of normal power loss.${specialRequirements}`;
+      },
+      type: 'Permanently installed emergency generator with automatic transfer switches for high-risk occupancies and large buildings. Diesel-powered generator with minimum 8-hour fuel supply for healthcare facilities and high-hazard occupancies. For smaller buildings: permanently installed emergency generator or battery systems with automatic transfer switches and minimum 2-hour capacity.',
+      distribution: 'Emergency power must be provided for: fire alarm systems, emergency voice/alarm communication systems, automatic fire detection systems, elevator car lighting, means of egress illumination, exit signs, fire pumps, smoke control systems, and electrically powered fire doors.',
+      installation: 'Emergency power systems must be installed in accordance with NFPA 110 and NFPA 111. Generator sets must be installed in a dedicated room with minimum 2-hour fire-resistance rating. Transfer switches must be listed for emergency service. Emergency circuits must be clearly marked and separated from normal power circuits.',
+      maintenance: 'Weekly testing under no-load conditions for at least 30 minutes; Monthly testing under load conditions for at least 30 minutes; Annual testing under full load conditions for at least 2 hours; Monthly inspection of batteries, fuel levels, and starting systems; Detailed records of all tests and maintenance activities.'
+    }
+  },
+  {
+    id: 'elevator-fire-safety',
+    name: 'Elevator Fire Safety',
+    description: 'Elevators shall be equipped with fire safety features to prevent their use during fire emergencies, except for firefighter service operations, and to protect elevator shafts from the spread of fire and smoke.',
+    applicableOccupancies: ['all'],
+    thresholds: {
+      stories: 4,
+      buildingHeight: 12
+    },
+    reference: 'RA 9514 IRR Rule 10.2.6.15',
+    specificRequirements: {
+      specifications: ({ stories, buildingHeight }) => {
+        const actualHeight = buildingHeight || stories * 3;
+        let phaseRequirement = 'Phase I emergency recall operation';
+        
+        if (actualHeight > 23 || stories >= 7) {
+          phaseRequirement = 'Phase I emergency recall operation and Phase II emergency in-car operation';
+        }
+        
+        return `All elevators must be equipped with ${phaseRequirement}. Elevator recall must be initiated by smoke detectors installed in each elevator lobby, elevator machine room, and elevator hoistway. Elevators must return to the designated level (typically the main exit floor) upon activation of Phase I emergency recall.`;
+      },
+      type: 'Firefighter service elevators required in buildings over 30 meters in height. At least one elevator must be designated as a firefighter service elevator and must be capable of reaching all floors in the building. For buildings under 30 meters: Standard elevators with Phase I emergency recall operation. Phase II emergency in-car operation required for buildings over 23 meters in height.',
+      distribution: 'Smoke detectors must be installed in each elevator lobby, in the elevator machine room, and at the top of the elevator hoistway. Heat detectors (instead of smoke detectors) may be used in elevator pits where environmental conditions would cause smoke detector false alarms.',
+      installation: 'Elevator fire safety features must be installed in accordance with ASME A17.1/CSA B44 Safety Code for Elevators and Escalators. Elevator machine rooms must be protected with automatic sprinklers or clean agent fire suppression systems. Shunt trip circuit breakers must be provided to disconnect elevator power prior to the application of water from sprinklers in the machine room or hoistway.',
+      maintenance: 'Monthly testing of Phase I emergency recall operation; Quarterly testing of Phase II emergency in-car operation; Annual full functional testing of all elevator fire safety features; Immediate repair of any defective components; Detailed records of all tests and maintenance activities.'
+    }
+  },
+  {
+    id: 'kitchen-fire-suppression',
+    name: 'Commercial Kitchen Fire Suppression',
+    description: 'Commercial cooking operations shall be protected by automatic fire suppression systems designed specifically for cooking equipment. These systems shall be designed to protect cooking surfaces, exhaust hoods, and ductwork.',
+    applicableOccupancies: ['assembly', 'mercantile', 'business', 'educational', 'institutional', 'healthcare-hospitals', 'healthcare-outpatient', 'residential-hotel'],
+    thresholds: {},
+    reference: 'RA 9514 IRR Rule 10.2.6.16',
+    specificRequirements: {
+      specifications: ({ occupancyType }) => {
+        let specialRequirements = '';
+        const occupancyId = occupancyType?.id || '';
+        
+        if (occupancyId.includes('healthcare') || occupancyId.includes('hospital')) {
+          specialRequirements = ' Healthcare facilities require UL 300 compliant wet chemical systems with manual activation capabilities accessible along the path of egress.';
+        } else if (occupancyId.includes('assembly')) {
+          specialRequirements = ' Assembly occupancies with commercial cooking equipment require automatic shutdown of fuel or power to cooking equipment upon system activation.';
+        }
+        
+        return `UL 300 compliant automatic fire suppression system required for all commercial cooking equipment producing grease-laden vapors. System must provide protection for cooking surfaces, hoods, and associated ductwork.${specialRequirements}`;
+      },
+      type: 'Wet chemical fire suppression system (preferred); Clean agent systems may be used for specialized applications. System must be specifically listed for protection of commercial cooking equipment.',
+      distribution: 'Nozzles must be provided for protection of cooking surfaces, hood plenums, and ductwork. Nozzles must be positioned to provide complete coverage of protected areas. Fusible links or heat detectors must be installed to provide automatic system activation.',
+      installation: 'System must be installed in accordance with NFPA 17A and the manufacturer\'s installation instructions. Manual activation device must be located along the path of egress, between 1.0 and 1.2 meters (40-48 inches) above the floor. System must be interconnected with the building fire alarm system (if provided). Automatic shutdown of fuel or power to cooking equipment must be provided upon system activation.',
+      maintenance: 'Monthly visual inspection of system components; Semi-annual inspection and maintenance by qualified personnel; Immediate replacement of discharged systems; Cooking equipment must not be operated while suppression system is impaired; Detailed records of all inspections and maintenance activities.'
     }
   },
   {
     id: 'fire-command-center',
     name: 'Fire Command Center',
-    description: 'A fire command center shall be provided in buildings with a height of more than 23 meters (75 feet) or with an occupant load of more than 1,000 persons.',
+    description: 'A fire command center shall be provided for buildings with a height of more than 23 meters (75 feet) or buildings with a total occupant load of more than 1,000 persons. The fire command center shall contain all panels and controls for fire safety systems in the building.',
     applicableOccupancies: ['all'],
     thresholds: {
-      occupantLoad: 1000,
-      stories: 8, // Assuming average floor height of 3m, so 23m ÷ 3m ≈ 8 floors
-      buildingHeight: 23
+      stories: 8,
+      buildingHeight: 23,
+      occupantLoad: 1000
     },
-    reference: 'RA 9514 IRR Rule 10.2.6.9',
+    reference: 'RA 9514 IRR Rule 10.2.6.17',
     specificRequirements: {
-      specifications: 'The fire command center shall be separated from the remainder of the building by a fire barrier with a minimum 2-hour fire resistance rating. The room shall be a minimum of 10 square meters (96 square feet) with a minimum dimension of 2.4 meters (8 feet).',
-      type: 'Dedicated room with fire alarm control panel, emergency voice/alarm communication system, fire department communication system, and controls for smoke control systems',
-      installation: 'The fire command center shall be located at the main entrance or at a location approved by the fire department. The room shall be provided with emergency lighting and ventilation',
-      maintenance: 'Monthly inspection of all components; Annual testing of all systems; Comprehensive maintenance every 3 years'
-    }
-  },
-  {
-    id: 'emergency-evacuation-plan',
-    name: 'Emergency Evacuation Plan',
-    description: 'An emergency evacuation plan shall be prepared and maintained for all buildings with an occupant load of more than 50 persons.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 50
-    },
-    reference: 'RA 9514 IRR Rule 10.2.5.11',
-    specificRequirements: {
-      specifications: 'The emergency evacuation plan shall include procedures for reporting emergencies, occupant and staff response to emergencies, evacuation, relocation, and accounting for occupants.',
-      type: 'Written document with floor plans showing exit routes, assembly points, and locations of fire protection equipment',
-      distribution: 'Copies shall be provided to all building staff and posted at conspicuous locations on each floor',
-      installation: 'Floor plans shall be oriented correctly with "YOU ARE HERE" markers',
-      maintenance: 'Annual review and update; Immediate update following any changes to the building layout or fire protection systems'
-    }
-  },
-  {
-    id: 'alternate-exits-stairs-ladders',
-    name: 'Alternate Exits, Stairs, and Ladders',
-    description: 'Alternate means of egress including stairs, ladders, and emergency exits shall be provided in accordance with the occupant load and building height requirements.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 10,
-      stories: 2
-    },
-    reference: 'RA 9514 IRR Rule 10.2.5.3',
-    specificRequirements: {
-      quantity: ({ occupantLoad, stories }) => {
-        let requiredStairways = 1;
-        if (stories > 1) {
-          if (occupantLoad > 500 && occupantLoad <= 1000) {
-            requiredStairways = 2;
-          } else if (occupantLoad > 1000) {
-            requiredStairways = 3;
-          }
+      specifications: ({ stories, buildingHeight, occupantLoad }) => {
+        const actualHeight = buildingHeight || stories * 3;
+        let roomSize = '10 square meters';
+        
+        if (actualHeight > 30 || occupantLoad > 3000) {
+          roomSize = '15 square meters';
         }
-        return `Minimum ${requiredStairways} stairway(s) required for multi-story buildings`;
+        if (actualHeight > 60 || occupantLoad > 5000) {
+          roomSize = '20 square meters';
+        }
+        
+        return `Fire command center must be a minimum of ${roomSize} with a minimum dimension of 3 meters. Room must have a minimum 1-hour fire-resistance rating and direct access to the exterior or exit enclosure.`;
       },
-      specifications: ({ occupantLoad, stories }) => {
-        const stairWidth = Math.max(1.12, Math.ceil(occupantLoad * 5) / 1000).toFixed(2);
-        let requirements = `Minimum stair width: ${stairWidth} meters. `;
-        
-        if (stories > 4) {
-          requirements += 'For buildings over 4 stories: Stairways must be constructed of non-combustible materials with a minimum 2-hour fire resistance rating. ';
-        }
-        
-        if (occupantLoad > 100) {
-          requirements += 'Emergency stairways must be pressurized or enclosed to prevent smoke infiltration. ';
-        }
-        
-        requirements += 'Maximum riser height: 18 cm (7 inches). Minimum tread depth: 28 cm (11 inches). Minimum headroom: 2.1 meters (7 feet).';
-        
-        return requirements;
-      },
-      type: 'Interior exit stairways, exterior exit stairways, fire escape stairs, or ladders depending on building type and occupancy. Scissor stairs (two separate stairways within the same enclosure) are permitted if properly separated by fire-rated construction.',
-      installation: 'Stairways must discharge directly to the exterior or to a fire-rated exit passageway leading to the exterior. Stairways must be enclosed with fire-rated construction (minimum 1-hour for buildings up to 3 stories, 2-hour for buildings 4 stories or more). Stairways must have emergency lighting and exit signs.',
-      maintenance: 'Monthly inspection of stairways, handrails, and treads; Annual testing of emergency lighting and exit signs; Immediate repair of any damaged components'
+      type: 'Dedicated room containing all necessary controls, indicators, and communications systems for emergency operations.',
+      distribution: 'Fire command center must be located on the ground floor with direct access to the exterior or to an exit enclosure. Location must be approved by the local fire department.',
+      installation: 'Fire command center must contain: fire alarm control panel, emergency voice/alarm communication system controls, fire department communication system, fire pump status indicators, elevator status and control panels, smoke control system controls, emergency and standby power status indicators, schematic building plans, and emergency telephone. Room must be identified by a permanent sign reading "FIRE COMMAND CENTER" in letters at least 25mm (1 inch) in height.',
+      maintenance: 'Weekly visual inspection; Monthly testing of communication systems; Annual full functional testing of all systems and controls; Immediate repair of any defective components; Room must be kept clean and free of storage.'
     }
   },
   {
-    id: 'alternate-power-supply-fdas',
-    name: 'Alternate Power Supply for Fire Detection and Alarm Systems',
-    description: 'An alternate power supply shall be provided for fire detection and alarm systems in buildings with an occupant load of more than 100 persons or buildings with more than 3 stories.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 100,
-      stories: 3
-    },
-    reference: 'RA 9514 IRR Rule 10.2.6.5 / NFPA 72',
+    id: 'hazardous-materials-storage',
+    name: 'Hazardous Materials Storage',
+    description: 'Areas used for the storage of hazardous materials shall be designed and constructed to protect occupants, the building, and the environment from the hazards associated with these materials.',
+    applicableOccupancies: ['industrial-general', 'industrial-special', 'industrial-high-hazard', 'storage-moderate-hazard', 'storage-high-hazard', 'laboratory', 'educational', 'business'],
+    thresholds: {},
+    reference: 'RA 9514 IRR Rule 10.2.6.18',
     specificRequirements: {
-      specifications: ({ stories, occupantLoad }) => {
-        let duration = 24;
-        let alarmDuration = 5;
+      specifications: ({ occupancyType }) => {
+        let specialRequirements = '';
+        const occupancyId = occupancyType?.id || '';
         
-        // For high-rise buildings or large occupant loads, increase requirements
-        if (stories > 7 || occupantLoad > 1000) {
-          duration = 24;
-          alarmDuration = 15; // For voice evacuation systems
+        if (occupancyId.includes('high-hazard')) {
+          specialRequirements = ' High hazard occupancies require 2-hour fire-rated separation from other occupancies, explosion control measures, and emergency power for ventilation systems.';
+        } else if (occupancyId.includes('laboratory')) {
+          specialRequirements = ' Laboratories require separate storage rooms for incompatible chemicals, ventilated storage cabinets, and spill control measures.';
+        } else if (occupancyId.includes('educational')) {
+          specialRequirements = ' Educational occupancies require locked storage cabinets, limited quantities, and separation from classrooms and assembly areas.';
         }
         
-        return `Secondary power supply must provide ${duration} hours of standby power followed by ${alarmDuration} minutes of alarm operation. For voice evacuation systems, ${duration} hours of standby followed by 15 minutes of alarm operation is required.`;
+        return `Hazardous materials storage areas must be separated from other areas by fire barriers with minimum 1-hour fire-resistance rating. Spill control, secondary containment, and ventilation must be provided based on the types and quantities of materials stored.${specialRequirements}`;
       },
-      type: 'Storage batteries or automatic-starting engine-driven generator. Primary power supply must be a dedicated branch circuit.',
-      installation: 'Transfer to secondary power must be automatic and occur within 10 seconds of primary power failure. Battery systems must be installed in accordance with NFPA 72 Section 10.6.',
-      maintenance: 'Weekly visual inspection; Monthly testing under load; Annual full load test for minimum duration; Battery replacement every 3-5 years or as recommended by manufacturer.'
+      type: 'Dedicated storage rooms, approved storage cabinets, or safety cans depending on the type and quantity of materials. Flammable liquid storage cabinets must be listed in accordance with UL 1275.',
+      distribution: 'Maximum allowable quantities per control area: Class I flammable liquids - 115 liters (30 gallons); Class II combustible liquids - 454 liters (120 gallons); Flammable gases - 57 cubic meters (2,000 cubic feet); Oxidizers and organic peroxides - quantities vary by class. Number of control areas decreases with building height.',
+      installation: 'Storage areas must be provided with spill control and secondary containment for liquid materials. Mechanical ventilation system must provide at least 1 cubic foot per minute per square foot of floor area (0.00508 m³/s per m²). Explosion control must be provided for materials that present an explosion hazard. Electrical equipment must be suitable for the hazardous location classification.',
+      maintenance: 'Weekly visual inspection; Monthly testing of ventilation systems; Annual testing of spill control and containment systems; Immediate cleanup of spills; Regular inventory control and proper disposal of expired materials; Detailed hazardous materials inventory must be maintained and available to the fire department.'
     }
   },
   {
-    id: 'alternate-power-supply-sprinkler',
-    name: 'Alternate Power Supply for Sprinkler Systems',
-    description: 'An alternate power supply shall be provided for electric fire pumps serving sprinkler systems in buildings with more than 7 stories or with an occupant load of more than 500 persons.',
+    id: 'fire-safety-during-construction',
+    name: 'Fire Safety During Construction',
+    description: 'Temporary fire protection measures shall be implemented during construction, alteration, or demolition operations to protect workers, the public, and adjacent properties from fire hazards.',
     applicableOccupancies: ['all'],
-    thresholds: {
-      occupantLoad: 500,
-      stories: 7
-    },
-    reference: 'RA 9514 IRR Rule 10.2.6.4 / NFPA 20',
+    thresholds: {},
+    reference: 'RA 9514 IRR Rule 10.2.6.19',
     specificRequirements: {
-      specifications: ({ stories, occupantLoad }) => {
-        let powerRequirements = 'Electric fire pumps must have a reliable source of power with automatic transfer capability.';
+      specifications: ({ stories, floorArea }) => {
+        let specialRequirements = '';
         
-        if (stories > 20 || occupantLoad > 2000) {
-          powerRequirements += ' Multiple power sources or on-site generator with minimum 8-hour fuel supply required.';
-        } else if (stories > 7 || occupantLoad > 500) {
-          powerRequirements += ' On-site generator with minimum 4-hour fuel supply or connection to multiple utility services required.';
+        if (stories > 3) {
+          specialRequirements = ' Buildings over 3 stories require a temporary standpipe system extended with construction progress. At least one stairway must be provided with access to all floors.';
+        }
+        if (floorArea > 5000) {
+          specialRequirements += ' Large construction sites require a fire prevention program manager and regular fire safety inspections.';
         }
         
-        return powerRequirements;
+        return `Temporary fire protection equipment must be provided throughout construction. Fire department access must be maintained at all times. Temporary water supply for firefighting must be provided when construction exceeds 12 meters (40 feet) in height.${specialRequirements}`;
       },
-      type: 'Standby power system must be capable of carrying the locked-rotor current of the fire pump motor(s). Transfer of power must be automatic for high-rise buildings.',
-      installation: 'Power transfer switches must be listed for fire pump service. Generator installations must comply with NFPA 110 and be installed in a dedicated fire-rated room.',
-      maintenance: 'Weekly testing of transfer switches; Monthly testing of generator under load; Annual full load test for minimum 2 hours; Fuel supply maintenance according to NFPA 110.'
-    }
-  },
-  {
-    id: 'alternate-power-supply-elevators',
-    name: 'Alternate Power Supply for Elevators',
-    description: 'An alternate power supply shall be provided for elevators in buildings with more than 7 stories to ensure operation during emergency conditions.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      stories: 7
-    },
-    reference: 'RA 9514 IRR Rule 10 / NFPA 70/72/101',
-    specificRequirements: {
-      specifications: ({ stories }) => {
-        let capacity = 'Standby power must be capable of operating at least one elevator at a time.';
-        
-        if (stories > 20) {
-          capacity = 'Standby power must be capable of operating all designated elevators simultaneously.';
-        } else if (stories > 10) {
-          capacity = 'Standby power must be capable of operating at least two elevators simultaneously.';
-        }
-        
-        return `${capacity} Minimum 2-hour operation time for emergency power supply.`;
-      },
-      type: 'Standby power system must be an automatic-starting engine-driven generator or separate utility service.',
-      installation: 'Transfer to emergency power must be automatic and within 60 seconds. Dedicated feeders required for elevator circuits.',
-      maintenance: 'Monthly testing under load; Annual full load test for minimum 2 hours; Generator maintenance according to NFPA 110.'
-    }
-  },
-  {
-    id: 'fireman-switch-elevators',
-    name: 'Fireman Switch for Elevators',
-    description: 'A fireman switch shall be provided for all elevators in buildings with more than 3 stories to allow firefighter control during emergency operations.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      stories: 3
-    },
-    reference: 'RA 9514 IRR Rule 10 / NFPA 72',
-    specificRequirements: {
-      specifications: 'Phase I Emergency Recall Operation must be provided through a three-position key switch at designated level. Phase II Emergency In-Car Operation must allow firefighters to control elevator from within the car.',
-      type: 'Three-position key switch ("OFF", "ON", "BYPASS") for Phase I operation. In-car firefighter service key switch for Phase II operation.',
-      installation: 'Automatic recall must be initiated by smoke detectors installed in elevator lobbies, machine rooms, and hoistways. Visual signal must indicate when Phase I operation is in effect.',
-      maintenance: 'Monthly testing of Phase I recall; Quarterly testing of Phase II operation; Annual full system test including smoke detector activation.'
-    }
-  },
-  {
-    id: 'sprinkler-system-by-floors',
-    name: 'Sprinkler System Requirements by Number of Floors',
-    description: 'Sprinkler system requirements vary based on the number of floors in the building, with more stringent requirements for taller buildings.',
-    applicableOccupancies: ['all'],
-    thresholds: {
-      stories: 1
-    },
-    reference: 'RA 9514 IRR Rule 10.2.6.4 / NFPA 13/14',
-    specificRequirements: {
-      specifications: ({ stories }) => {
-        let requirements = '';
-        
-        if (stories >= 21) {
-          requirements = 'Wet pipe system with standpipes and fire pump, minimum 90-120 minutes water supply duration. Minimum residual pressure of 100 psi (6.9 bar) at topmost outlet. Multiple fire pumps or zones may be required, emergency power supply mandatory. Water storage tanks typically required.';
-        } else if (stories >= 7) {
-          requirements = 'Wet pipe system with standpipes, minimum 60-90 minutes water supply duration. Minimum residual pressure of 100 psi (6.9 bar) at topmost outlet. Fire pump required with backup power supply.';
-        } else if (stories >= 3) {
-          requirements = 'Wet pipe system with minimum 60 minutes water supply duration. Minimum residual pressure of 7 psi (0.5 bar) at most remote sprinkler. Dedicated water supply or fire pump may be required.';
-        } else {
-          requirements = 'Wet pipe system with minimum 30 minutes water supply duration for light hazard. Minimum residual pressure of 7 psi (0.5 bar) at most remote sprinkler. Can be supplied by domestic water supply if adequate.';
-        }
-        
-        return requirements;
-      },
-      type: 'Wet pipe system is standard. Dry pipe systems allowed only in areas subject to freezing. Pre-action systems may be required for sensitive areas like data centers or museums.',
-      installation: 'System must be installed in accordance with NFPA 13. High-rise buildings require standpipes in accordance with NFPA 14. Fire department connections must be provided at street level.',
-      maintenance: 'Weekly visual inspection of control valves; Monthly inspection of water flow alarm devices; Quarterly inspection of alarm devices; Annual inspection and testing of all components; Five-year internal inspection of piping.'
+      type: 'Temporary fire extinguishers, temporary standpipes, temporary fire alarm systems, and temporary water supplies as required by the stage of construction.',
+      distribution: 'Fire extinguishers must be provided at each stairway on all floor levels where combustible materials are present, in all storage and construction sheds, and in locations where flammable or combustible liquids are stored or used. Maximum travel distance to a fire extinguisher must not exceed 23 meters (75 feet).',
+      installation: 'Temporary standpipes must be installed when construction reaches a height of 12 meters (40 feet) above the lowest level of fire department access. Standpipes must be extended as construction progresses to within one floor of the highest point of construction. Fire department connections must be marked and accessible. Temporary addressing and signage must be provided to facilitate emergency response.',
+      maintenance: 'Daily visual inspection of fire extinguishers and access routes; Weekly inspection of standpipes and water supplies; Immediate replacement of discharged fire extinguishers; Regular removal of combustible debris; Hot work permits required for all cutting, welding, or other hot work operations.'
     }
   }
 ];

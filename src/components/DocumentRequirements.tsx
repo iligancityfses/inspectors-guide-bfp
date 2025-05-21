@@ -19,33 +19,33 @@ export default function DocumentRequirements({ occupancyType }: DocumentRequirem
   };
 
   return (
-    <div className="card">
-      <h2 className="text-xl font-semibold mb-4">Required Documents for Inspection</h2>
-      <p className="text-gray-600 mb-4">
+    <div className="card bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+      <h2 className="text-xl font-semibold mb-4 dark:text-white">Required Documents for Inspection</h2>
+      <p className="text-gray-600 dark:text-gray-300 mb-4">
         The following documents are required for {occupancyType.name} occupancies according to the Revised Fire Code of the Philippines (RA 9514 IRR 2019).
         Inspectors should remind building owners to secure and maintain these documents.
       </p>
 
       {documentRequirements.length === 0 ? (
-        <p className="text-gray-500 italic">No specific document requirements found for this occupancy type.</p>
+        <p className="text-gray-500 dark:text-gray-400 italic">No specific document requirements found for this occupancy type.</p>
       ) : (
         <div className="space-y-4">
           {documentRequirements.map((doc) => (
             <div 
               key={doc.id} 
-              className="border border-gray-200 rounded-md overflow-hidden"
+              className="border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden bg-white dark:bg-gray-800"
             >
               <div 
-                className="flex justify-between items-center p-4 cursor-pointer bg-gray-50 hover:bg-gray-100"
+                className="flex justify-between items-center p-4 cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600"
                 onClick={() => toggleDocument(doc.id)}
               >
                 <div>
-                  <h3 className="font-medium">{doc.name}</h3>
-                  <p className="text-sm text-gray-600">{doc.description}</p>
+                  <h3 className="font-medium dark:text-white">{doc.name}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{doc.description}</p>
                 </div>
                 <div className="flex-shrink-0">
                   <svg 
-                    className={`w-5 h-5 text-gray-500 transform transition-transform ${expandedDocument === doc.id ? 'rotate-180' : ''}`} 
+                    className={`w-5 h-5 text-gray-500 dark:text-gray-400 transform transition-transform ${expandedDocument === doc.id ? 'rotate-180' : ''}`} 
                     fill="none" 
                     viewBox="0 0 24 24" 
                     stroke="currentColor"
@@ -56,13 +56,13 @@ export default function DocumentRequirements({ occupancyType }: DocumentRequirem
               </div>
               
               {expandedDocument === doc.id && (
-                <div className="p-4 bg-white border-t border-gray-200">
+                <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                   <div className="mb-2">
-                    <span className="text-sm font-medium text-gray-500">Reference: </span>
-                    <span className="text-sm">{doc.reference}</span>
+                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Reference: </span>
+                    <span className="text-sm dark:text-gray-300">{doc.reference}</span>
                   </div>
                   {doc.details && (
-                    <div className="text-sm text-gray-700">
+                    <div className="text-sm text-gray-700 dark:text-gray-300">
                       <p>{doc.details}</p>
                     </div>
                   )}
