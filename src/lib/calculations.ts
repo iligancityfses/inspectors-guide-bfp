@@ -1,6 +1,6 @@
 import { OccupancyType } from '@/data/occupancyTypes';
 import { FireSafetyRequirement, fireSafetyRequirements } from '@/data/fireCodeRequirements';
-import { BuildingFeature } from '@/components/BuildingFeatures';
+import type { BuildingFeature } from '@/components/BuildingFeatures';
 
 /**
  * Fire pump calculation constants

@@ -56,33 +56,43 @@ export default function Home() {
       return;
     }
     
-    // Create floors based on total area and number of floors
-    const floorArea = totalFloorArea / numberOfFloors;
-    const floorLength = Math.sqrt(floorArea); // Assuming square floors for simplicity
-    const floorWidth = floorLength;
-    
-    const newFloors: Floor[] = [];
-    for (let i = 0; i < numberOfFloors; i++) {
-      newFloors.push({
-        id: `floor-${i + 1}`,
-        length: floorLength,
-        width: floorWidth,
-        area: floorArea,
-        occupantLoad: Math.ceil(floorArea / selectedOccupancyType.occupantLoadFactor),
+    try {
+      // Create floors based on total area and number of floors
+      const floorArea = totalFloorArea / numberOfFloors;
+      const floorLength = Math.sqrt(floorArea); // Assuming square floors for simplicity
+      const floorWidth = floorLength;
+      
+      const newFloors: Floor[] = [];
+      for (let i = 0; i < numberOfFloors; i++) {
+        newFloors.push({
+          id: `floor-${i + 1}`,
+          length: floorLength,
+          width: floorWidth,
+          area: floorArea,
+          occupantLoad: Math.ceil(floorArea / selectedOccupancyType.occupantLoadFactor),
+        });
+      }
+      
+      setFloors(newFloors);
+      
+      // Calculate building data and requirements
+      const newBuildingData = calculateBuildingData(selectedOccupancyType, newFloors);
+      newBuildingData.features = buildingFeatures.filter(feature => feature.selected);
+      const newRequirements = determineRequiredFireSafetyMeasures(newBuildingData);
+      
+      // Update state
+      setBuildingData(newBuildingData);
+      setRequirements(newRequirements);
+      setShowRequirements(true);
+      
+      console.log('Requirements generated successfully:', {
+        buildingData: newBuildingData,
+        requirements: newRequirements.length
       });
+    } catch (error) {
+      console.error('Error generating requirements:', error);
+      alert('An error occurred while generating requirements. Please check the console for details.');
     }
-    
-    setFloors(newFloors);
-    
-    // Calculate building data and requirements
-    const newBuildingData = calculateBuildingData(selectedOccupancyType, newFloors);
-    newBuildingData.features = buildingFeatures.filter(feature => feature.selected);
-    const newRequirements = determineRequiredFireSafetyMeasures(newBuildingData);
-    
-    // Update state
-    setBuildingData(newBuildingData);
-    setRequirements(newRequirements);
-    setShowRequirements(true);
   };
 
   return (
