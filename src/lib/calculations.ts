@@ -105,7 +105,7 @@ export function determineRequiredFireSafetyMeasures(buildingData: BuildingData):
   // Estimate building height based on number of stories (3m per floor is standard)
   const estimatedBuildingHeight = numberOfStories * 3;
   // Determine risk level based on occupancy type, area, and height
-  const riskLevel = determineRiskLevel(occupancyType, totalArea, numberOfStories, totalOccupantLoad);
+  const riskLevel = determineRiskLevel(occupancyType, totalArea, numberOfStories, totalOccupantLoad, buildingData.features);
 
   // Log for debugging
   console.log('Building data:', {
@@ -144,7 +144,7 @@ export function determineRequiredFireSafetyMeasures(buildingData: BuildingData):
         return shouldRequireStandpipeSystem(occupancyType, numberOfStories, estimatedBuildingHeight, totalArea, riskLevel);
       
       case 'fire-detection-alarm':
-        return shouldRequireFireAlarm(occupancyType, numberOfStories, totalArea, totalOccupantLoad, riskLevel);
+        return shouldRequireFireAlarm(occupancyType, numberOfStories, totalArea, totalOccupantLoad, riskLevel, buildingData.features);
       
       case 'emergency-exits':
         // All buildings require emergency exits, but the number varies based on occupant load
@@ -155,7 +155,7 @@ export function determineRequiredFireSafetyMeasures(buildingData: BuildingData):
         return occupancyType.id !== 'residential-single-family';
       
       case 'fire-compartmentation':
-        return shouldRequireFireCompartmentation(occupancyType, numberOfStories, totalArea, riskLevel);
+        return shouldRequireFireCompartmentation(occupancyType, numberOfStories, totalArea, riskLevel, buildingData.features);
       
       case 'smoke-control-systems':
         return shouldRequireSmokeSystems(occupancyType, numberOfStories, totalArea, estimatedBuildingHeight, buildingData.features);
@@ -200,15 +200,19 @@ export function determineRequiredFireSafetyMeasures(buildingData: BuildingData):
 /**
  * Determine the risk level of a building based on occupancy, area, and height
  */
-function determineRiskLevel(occupancyType: OccupancyType, totalArea: number, numberOfStories: number, occupantLoad: number): 'low' | 'moderate' | 'high' {
-  // High hazard occupancies are always high risk
+/**
+ * Determine the risk level of a building based on occupancy, area, height, and occupant load
+ * According to RA 9514 IRR 2019 Rule 10.1.4 (Hazard Classification)
+ */
+function determineRiskLevel(occupancyType: OccupancyType, totalArea: number, numberOfStories: number, occupantLoad: number, features?: BuildingFeature[]): 'low' | 'moderate' | 'high' {
+  // High hazard occupancies are always high risk (Rule 10.1.4.3)
   if (occupancyType.hazardClassification === 'high' || 
       occupancyType.id.includes('high-hazard') || 
       occupancyType.id.includes('storage-high')) {
     return 'high';
   }
   
-  // Healthcare, detention, and assembly with high occupant loads are high risk
+  // Healthcare, detention, and assembly with high occupant loads are high risk (Rule 10.1.4.3)
   if (occupancyType.id.includes('healthcare') || 
       occupancyType.id.includes('hospital') || 
       occupancyType.id.includes('restrained') || 
@@ -216,21 +220,40 @@ function determineRiskLevel(occupancyType: OccupancyType, totalArea: number, num
     return 'high';
   }
   
-  // High-rise buildings (over 7 stories or 21m) are high risk
+  // Buildings with hazardous materials storage are high risk (Rule 10.1.4.3)
+  if (features?.some(feature => feature.id === 'hazardous-materials' && feature.selected)) {
+    return 'high';
+  }
+  
+  // High-rise buildings (over 7 stories or 21m) are high risk (Rule 10.1.4.3)
   if (numberOfStories > 7) {
     return 'high';
   }
   
-  // Large area buildings are moderate to high risk
+  // Large area buildings are high risk (Rule 10.1.4.3)
   if (totalArea > 10000) {
     return 'high';
   }
   
-  if (totalArea > 5000 || numberOfStories > 4 || occupantLoad > 500) {
+  // Educational facilities with occupant load > 500 are high risk (Rule 10.1.4.3)
+  if (occupancyType.id.includes('educational') && occupantLoad > 500) {
+    return 'high';
+  }
+  
+  // Moderate risk criteria (Rule 10.1.4.2)
+  if (totalArea > 5000 || 
+      numberOfStories > 4 || 
+      occupantLoad > 500 || 
+      occupancyType.hazardClassification === 'ordinary' || 
+      occupancyType.id.includes('mercantile') || 
+      occupancyType.id.includes('business') && totalArea > 3000 || 
+      occupancyType.id.includes('assembly') && occupantLoad > 300 || 
+      occupancyType.id.includes('educational') && occupantLoad > 200 || 
+      features?.some(feature => feature.id === 'data-center' && feature.selected)) {
     return 'moderate';
   }
   
-  // Default to low risk for small buildings with low occupant loads
+  // Default to low risk for small buildings with low occupant loads (Rule 10.1.4.1)
   return 'low';
 }
 
@@ -244,7 +267,7 @@ function shouldRequireAutomaticSprinklerSystem(
   occupantLoad: number,
   features?: BuildingFeature[]
 ): boolean {
-  // Always required for certain occupancies regardless of size
+  // Always required for certain occupancies regardless of size per RA 9514 IRR 2019 Rule 10.2.6.4
   if (occupancyType.id.includes('healthcare') || 
       occupancyType.id.includes('hospital') || 
       occupancyType.id.includes('high-hazard') || 
@@ -254,6 +277,22 @@ function shouldRequireAutomaticSprinklerSystem(
       occupancyType.id.includes('correctional') || 
       occupancyType.id.includes('restrained') || 
       occupancyType.id.includes('day-care')) {
+    return true;
+  }
+  
+  // Educational facilities with occupant load > 300 always require sprinklers (Rule 10.2.6.4.3)
+  if (occupancyType.id.includes('educational') && occupantLoad > 300) {
+    return true;
+  }
+  
+  // Assembly occupancies with occupant load > 300 always require sprinklers (Rule 10.2.6.4.1)
+  if (occupancyType.id.includes('assembly') && occupantLoad > 300) {
+    return true;
+  }
+  
+  // Basements over 200 sq.m always require sprinklers (Rule 10.2.6.4.6)
+  if (features?.some(feature => feature.id === 'basement' && feature.selected) && 
+      totalArea / numberOfStories > 200) { // Estimate basement size
     return true;
   }
   
@@ -273,7 +312,7 @@ function shouldRequireAutomaticSprinklerSystem(
     return false;
   }
   
-  // Open parking garages with natural ventilation are exempt
+  // Open parking garages with natural ventilation are exempt (Rule 10.2.6.4.8)
   if (occupancyType.id === 'storage-parking-garage' && 
       features?.some(feature => feature.id === 'natural-ventilation' && feature.selected)) {
     return false;
@@ -292,7 +331,7 @@ function shouldRequireAutomaticSprinklerSystem(
     return false;
   }
   
-  // General requirements based on height, area, and occupant load
+  // General requirements based on height, area, and occupant load per Rule 10.2.6.4
   return (numberOfStories >= 5) || // More than 15m height (5 floors × 3m)
          (totalArea >= 2000) || // Area exceeding 2,000 sq.m
          (occupantLoad >= 500); // Occupant load exceeding 500 persons
@@ -378,19 +417,25 @@ function shouldRequireFireAlarm(
   numberOfStories: number, 
   totalArea: number, 
   occupantLoad: number,
-  riskLevel: 'low' | 'moderate' | 'high'
+  riskLevel: 'low' | 'moderate' | 'high',
+  features?: BuildingFeature[]
 ): boolean {
-  // Single-family dwellings only require smoke alarms, not full fire alarm systems
+  // Single-family dwellings only require smoke alarms, not full fire alarm systems (Rule 10.2.6.3.7)
   if (occupancyType.id === 'residential-single-family') {
     return false;
   }
   
-  // Always required for high-risk occupancies
+  // Always required for high-risk occupancies (Rule 10.2.6.3.1)
   if (riskLevel === 'high') {
     return true;
   }
   
-  // Required for all assembly, educational, healthcare, institutional occupancies
+  // Required for all buildings with sprinkler systems (Rule 10.2.6.3.2)
+  if (shouldRequireAutomaticSprinklerSystem(occupancyType, numberOfStories, totalArea, occupantLoad, features)) {
+    return true;
+  }
+  
+  // Required for all assembly, educational, healthcare, institutional occupancies (Rule 10.2.6.3.3)
   if (occupancyType.id.includes('assembly') || 
       occupancyType.id.includes('educational') || 
       occupancyType.id.includes('healthcare') || 
@@ -399,7 +444,7 @@ function shouldRequireFireAlarm(
     return true;
   }
   
-  // Required for residential occupancies with more than 16 sleeping units
+  // Required for residential occupancies with more than 16 sleeping units (Rule 10.2.6.3.4)
   if ((occupancyType.id.includes('residential-apartment') || 
        occupancyType.id.includes('residential-hotels') || 
        occupancyType.id.includes('residential-dormitories')) && 
@@ -407,19 +452,30 @@ function shouldRequireFireAlarm(
     return true;
   }
   
-  // Required for business occupancies over 1000 sq.m or with more than 100 occupants
+  // Required for business occupancies over 1000 sq.m or with more than 100 occupants (Rule 10.2.6.3.5)
   if (occupancyType.id === 'business' && (totalArea > 1000 || occupantLoad > 100)) {
     return true;
   }
   
-  // Required for mercantile occupancies over 500 sq.m
+  // Required for mercantile occupancies over 500 sq.m (Rule 10.2.6.3.6)
   if (occupancyType.id.includes('mercantile') && totalArea > 500) {
     return true;
   }
   
-  // Required for industrial and storage occupancies over 1000 sq.m
+  // Required for industrial and storage occupancies over 1000 sq.m (Rule 10.2.6.3.7)
   if ((occupancyType.id.includes('factory') || occupancyType.id.includes('storage')) && 
       totalArea > 1000) {
+    return true;
+  }
+  
+  // Required for buildings with basements over 200 sq.m (Rule 10.2.6.3.8)
+  if (features?.some(feature => feature.id === 'basement' && feature.selected) && 
+      totalArea / numberOfStories > 200) { // Estimate basement size
+    return true;
+  }
+  
+  // Required for buildings over 2 stories (Rule 10.2.6.3.9)
+  if (numberOfStories > 2) {
     return true;
   }
   
@@ -434,37 +490,58 @@ function shouldRequireFireCompartmentation(
   occupancyType: OccupancyType, 
   numberOfStories: number, 
   totalArea: number,
-  riskLevel: 'low' | 'moderate' | 'high'
+  riskLevel: 'low' | 'moderate' | 'high',
+  features?: BuildingFeature[]
 ): boolean {
-  // Required for all buildings over 3 stories
+  // Required for all buildings over 3 stories (Rule 10.2.5.1)
   if (numberOfStories > 3) {
     return true;
   }
   
-  // Required for high-risk occupancies regardless of size
+  // Required for high-risk occupancies regardless of size (Rule 10.2.5.2)
   if (riskLevel === 'high') {
     return true;
   }
   
-  // Required for healthcare facilities regardless of size
+  // Required for healthcare facilities regardless of size (Rule 10.2.5.3)
   if (occupancyType.id.includes('healthcare') || occupancyType.id.includes('hospital')) {
     return true;
   }
   
-  // Required for residential occupancies with more than 3 dwelling units
+  // Required for residential occupancies with more than 3 dwelling units (Rule 10.2.5.4)
   if (occupancyType.id.includes('residential') && 
       !occupancyType.id.includes('single-family') && 
       !occupancyType.id.includes('two-family')) {
     return true;
   }
   
-  // Required for mixed occupancies
+  // Required for mixed occupancies (Rule 10.2.5.5)
   if (occupancyType.id.includes('mixed')) {
     return true;
   }
   
-  // Required for moderate risk buildings over 2000 sq.m
+  // Required for buildings with basements (Rule 10.2.5.6)
+  if (features?.some(feature => feature.id === 'basement' && feature.selected)) {
+    return true;
+  }
+  
+  // Required for buildings with atriums (Rule 10.2.5.7)
+  if (features?.some(feature => feature.id === 'atrium' && feature.selected)) {
+    return true;
+  }
+  
+  // Required for buildings with hazardous materials (Rule 10.2.5.8)
+  if (features?.some(feature => feature.id === 'hazardous-materials' && feature.selected)) {
+    return true;
+  }
+  
+  // Required for moderate risk buildings over 2000 sq.m (Rule 10.2.5.9)
   if (riskLevel === 'moderate' && totalArea > 2000) {
+    return true;
+  }
+  
+  // Required for buildings with floor area > 3000 sq.m per floor (Rule 10.2.5.10)
+  if (totalArea / numberOfStories > 3000) {
     return true;
   }
   

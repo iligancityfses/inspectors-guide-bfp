@@ -489,32 +489,31 @@ export default function RequirementsList({ requirements, buildingData }: Require
                     floorArea: buildingData.totalArea,
                     stories: buildingData.floors.length,
                     buildingHeight: buildingData.floors.length * 3, // Estimate height based on 3m per floor
+                    floors: buildingData.floors, // Pass the floors array
                     occupancyType: buildingData.occupancyType // Pass the occupancy type to the specifications function
                   };
                   
-                  const quantity = specificReqs?.quantity ? 
-                    (typeof specificReqs.quantity === 'function' ? specificReqs.quantity(params) : specificReqs.quantity) : 
-                    null;
-                    
-                  const specifications = specificReqs?.specifications ? 
-                    (typeof specificReqs.specifications === 'function' ? specificReqs.specifications(params) : specificReqs.specifications) : 
-                    null;
-                    
-                  const type = specificReqs?.type ? 
-                    (typeof specificReqs.type === 'function' ? specificReqs.type(params) : specificReqs.type) : 
-                    null;
-                    
-                  const distribution = specificReqs?.distribution ? 
-                    (typeof specificReqs.distribution === 'function' ? specificReqs.distribution(params) : specificReqs.distribution) : 
-                    null;
-                    
-                  const installation = specificReqs?.installation ? 
-                    (typeof specificReqs.installation === 'function' ? specificReqs.installation(params) : specificReqs.installation) : 
-                    null;
-                    
-                  const maintenance = specificReqs?.maintenance ? 
-                    (typeof specificReqs.maintenance === 'function' ? specificReqs.maintenance(params) : specificReqs.maintenance) : 
-                    null;
+                  // Safely handle function or string values for specific requirements
+                  const getRequirementValue = (value: any) => {
+                    if (!value) return null;
+                    if (typeof value === 'string') return value;
+                    if (typeof value === 'function') {
+                      try {
+                        return value(params);
+                      } catch (error) {
+                        console.error(`Error calculating requirement value:`, error);
+                        return 'Error calculating value';
+                      }
+                    }
+                    return String(value);
+                  };
+                  
+                  const quantity = specificReqs?.quantity ? getRequirementValue(specificReqs.quantity) : null;
+                  const specifications = specificReqs?.specifications ? getRequirementValue(specificReqs.specifications) : null;
+                  const type = specificReqs?.type ? getRequirementValue(specificReqs.type) : null;
+                  const distribution = specificReqs?.distribution ? getRequirementValue(specificReqs.distribution) : null;
+                  const installation = specificReqs?.installation ? getRequirementValue(specificReqs.installation) : null;
+                  const maintenance = specificReqs?.maintenance ? getRequirementValue(specificReqs.maintenance) : null;
                   
                   return (
                     <div key={requirement.id} className="p-4 dark:bg-gray-800">
@@ -562,10 +561,10 @@ export default function RequirementsList({ requirements, buildingData }: Require
                             <div>
                               <h4 className="font-medium text-sm dark:text-gray-200">Specifications:</h4>
                               <div className="relative">
-                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-specs`] && specifications.length > 150 ? 'line-clamp-3' : ''}`}>
-                                  {specifications}
+                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-specs`] && typeof specifications === 'string' && specifications.length > 150 ? 'line-clamp-3' : ''}`}>
+                                  {typeof specifications === 'string' ? specifications : <React.Fragment>{specifications}</React.Fragment>}
                                 </p>
-                                {specifications.length > 150 && (
+                                {typeof specifications === 'string' && specifications.length > 150 && (
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -583,14 +582,14 @@ export default function RequirementsList({ requirements, buildingData }: Require
                             </div>
                           )}
                           
-                          {specificReqs?.type && (
+                          {type && (
                             <div>
                               <h4 className="font-medium text-sm dark:text-gray-200">Type:</h4>
                               <div className="relative">
-                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-type`] && specificReqs.type.length > 150 ? 'line-clamp-3' : ''}`}>
-                                  {specificReqs.type}
+                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-type`] && typeof type === 'string' && type.length > 150 ? 'line-clamp-3' : ''}`}>
+                                  {typeof type === 'string' ? type : <React.Fragment>{type}</React.Fragment>}
                                 </p>
-                                {specificReqs.type.length > 150 && (
+                                {typeof type === 'string' && type.length > 150 && (
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -608,14 +607,14 @@ export default function RequirementsList({ requirements, buildingData }: Require
                             </div>
                           )}
                           
-                          {specificReqs?.distribution && (
+                          {distribution && (
                             <div>
                               <h4 className="font-medium text-sm dark:text-gray-200">Distribution:</h4>
                               <div className="relative">
-                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-distribution`] && specificReqs.distribution.length > 150 ? 'line-clamp-3' : ''}`}>
-                                  {specificReqs.distribution}
+                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-distribution`] && typeof distribution === 'string' && distribution.length > 150 ? 'line-clamp-3' : ''}`}>
+                                  {typeof distribution === 'string' ? distribution : <React.Fragment>{distribution}</React.Fragment>}
                                 </p>
-                                {specificReqs.distribution.length > 150 && (
+                                {typeof distribution === 'string' && distribution.length > 150 && (
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -633,14 +632,14 @@ export default function RequirementsList({ requirements, buildingData }: Require
                             </div>
                           )}
                           
-                          {specificReqs?.installation && (
+                          {installation && (
                             <div>
-                              <h4 className="font-medium text-sm">Installation:</h4>
+                              <h4 className="font-medium text-sm dark:text-gray-200">Installation Requirements:</h4>
                               <div className="relative">
-                                <p className={`text-sm text-gray-700 ${!expandedText[`${requirement.id}-installation`] && specificReqs.installation.length > 150 ? 'line-clamp-3' : ''}`}>
-                                  {specificReqs.installation}
+                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-installation`] && typeof installation === 'string' && installation.length > 150 ? 'line-clamp-3' : ''}`}>
+                                  {typeof installation === 'string' ? installation : <React.Fragment>{installation}</React.Fragment>}
                                 </p>
-                                {specificReqs.installation.length > 150 && (
+                                {typeof installation === 'string' && installation.length > 150 && (
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -658,14 +657,14 @@ export default function RequirementsList({ requirements, buildingData }: Require
                             </div>
                           )}
                           
-                          {specificReqs?.maintenance && (
+                          {maintenance && (
                             <div>
-                              <h4 className="font-medium text-sm">Maintenance:</h4>
+                              <h4 className="font-medium text-sm dark:text-gray-200">Maintenance Requirements:</h4>
                               <div className="relative">
-                                <p className={`text-sm text-gray-700 ${!expandedText[`${requirement.id}-maintenance`] && specificReqs.maintenance.length > 150 ? 'line-clamp-3' : ''}`}>
-                                  {specificReqs.maintenance}
+                                <p className={`text-sm text-gray-700 dark:text-gray-300 ${!expandedText[`${requirement.id}-maintenance`] && typeof maintenance === 'string' && maintenance.length > 150 ? 'line-clamp-3' : ''}`}>
+                                  {typeof maintenance === 'string' ? maintenance : <React.Fragment>{maintenance}</React.Fragment>}
                                 </p>
-                                {specificReqs.maintenance.length > 150 && (
+                                {typeof maintenance === 'string' && maintenance.length > 150 && (
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();

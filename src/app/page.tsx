@@ -217,7 +217,9 @@ export default function Home() {
                     onClick={generateRequirements}
                     className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md shadow-md transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600 flex items-center"
                   >
-                    <RequirementsIcon className="mr-2" />
+                    <span className="mr-2">
+                      <RequirementsIcon />
+                    </span>
                     Generate Requirements
                   </button>
                 </div>
